@@ -1,0 +1,18 @@
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+
+# Debug files
+*.dSYM/
+*.idb
+*.pdb
+
+# Project scope
+*heatSim
