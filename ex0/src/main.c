@@ -16,8 +16,8 @@
 double average(double *array, size_t size) {
 	double result = 0;
 
-	for (int i = 0; i < size; i++) {
-		result += array[i];
+	for (size_t idx = 0; idx < size; idx++) {
+		result += array[idx];
 	}
 
 	return result / size;
@@ -26,7 +26,6 @@ double average(double *array, size_t size) {
 /*--------------------------------------------------------------------
 | Function: simul
 ---------------------------------------------------------------------*/
-
 DoubleMatrix2D *simul(
 	DoubleMatrix2D *matrix,
 	DoubleMatrix2D *matrix_aux,
@@ -43,9 +42,12 @@ DoubleMatrix2D *simul(
 				dm2dGetEntry(matrix, i, j+1)
 			};
 			double value = average(arr, 4);
+
+			// FIXME: use both matrices to get results
 			dm2dSetEntry(matrix_aux, i, j, value);
 		}
 	}
+	// FIXME: return the resulting matrix
 	return matrix_aux;
 }
 
@@ -86,13 +88,8 @@ void is_arg_greater_equal_to(int value, int greater, const char *name) {
 }
 
 /*--------------------------------------------------------------------
-| Function: is_arg_greater_equal_to
----------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------
 | Function: main
 ---------------------------------------------------------------------*/
-
 int main (int argc, char *argv[]) {
 	if (argc != 7) {
 		fprintf(stderr, "\nNumero invalido de argumentos.\n");
@@ -129,6 +126,8 @@ int main (int argc, char *argv[]) {
 
 
 	/* FIXME: FAZER ALTERACOES AQUI */
+
+
 	dm2dSetLineTo(matrix, 0, tSup);
 	dm2dSetLineTo(matrix, N+1, tInf);
 	dm2dSetColumnTo(matrix, 0, tEsq);
