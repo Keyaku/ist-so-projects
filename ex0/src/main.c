@@ -11,6 +11,19 @@
 
 
 /*--------------------------------------------------------------------
+| Function: average
+---------------------------------------------------------------------*/
+double average(double *array, size_t size) {
+	double result = 0;
+
+	for (int i = 0; i < size; i++) {
+		result += array[i];
+	}
+
+	return result / size;
+}
+
+/*--------------------------------------------------------------------
 | Function: simul
 ---------------------------------------------------------------------*/
 
@@ -21,8 +34,19 @@ DoubleMatrix2D *simul(
 	int colunas,
 	int numIteracoes
 ) {
-	// FIXME
-	return matrix;
+	for (int i = 0; i < linhas; i++) {
+		for (int j = 0; j < colunas; j++) {
+			double arr[] = {
+				dm2dGetEntry(matrix, i-1, j),
+				dm2dGetEntry(matrix, i+1, j),
+				dm2dGetEntry(matrix, i, j-1),
+				dm2dGetEntry(matrix, i, j+1)
+			};
+			double value = average(arr, 4);
+			dm2dSetEntry(matrix_aux, i, j, value);
+		}
+	}
+	return matrix_aux;
 }
 
 /*--------------------------------------------------------------------
@@ -51,13 +75,19 @@ double parse_double_or_exit(const char *str, const char *name) {
 	return value;
 }
 
-
+/*--------------------------------------------------------------------
+| Function: is_arg_greater_equal_to
+---------------------------------------------------------------------*/
 void is_arg_greater_equal_to(int value, int greater, const char *name) {
 	if (value < greater) {
 		fprintf(stderr, "\n%s tem que ser >= %d\n\n", name, greater);
 		exit(1);
 	}
 }
+
+/*--------------------------------------------------------------------
+| Function: is_arg_greater_equal_to
+---------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------
 | Function: main
@@ -99,8 +129,6 @@ int main (int argc, char *argv[]) {
 
 
 	/* FIXME: FAZER ALTERACOES AQUI */
-
-/*
 	dm2dSetLineTo(matrix, 0, tSup);
 	dm2dSetLineTo(matrix, N+1, tInf);
 	dm2dSetColumnTo(matrix, 0, tEsq);
@@ -110,8 +138,6 @@ int main (int argc, char *argv[]) {
 
 	result = simul(matrix, matrix_aux, N+2, N+2, iteracoes);
 	dm2dPrint(result);
-*/
-	dm2dPrint(matrix_aux);
 
 	dm2dFree(matrix);
 	dm2dFree(matrix_aux);
