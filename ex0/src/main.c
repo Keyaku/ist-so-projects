@@ -31,24 +31,34 @@ DoubleMatrix2D *simul(
 	DoubleMatrix2D *matrix_aux,
 	int linhas,
 	int colunas,
-	int numIteracoes
+	int iteracoes
 ) {
-	for (int i = 0; i < linhas; i++) {
-		for (int j = 0; j < colunas; j++) {
-			double arr[] = {
-				dm2dGetEntry(matrix, i-1, j),
-				dm2dGetEntry(matrix, i+1, j),
-				dm2dGetEntry(matrix, i, j-1),
-				dm2dGetEntry(matrix, i, j+1)
-			};
-			double value = average(arr, 4);
+	DoubleMatrix2D *result = matrix;
+	DoubleMatrix2D *matrix_temp = NULL;
 
-			// FIXME: use both matrices to get results
-			dm2dSetEntry(matrix_aux, i, j, value);
+	while (iteracoes > 0) {
+		iteracoes -= 1;
+
+		for (int i = 1; i < linhas-1; i++) {
+			for (int j = 1; j < colunas-1; j++) {
+				double arr[] = {
+					dm2dGetEntry(matrix, i-1, j),
+					dm2dGetEntry(matrix, i,   j-1),
+					dm2dGetEntry(matrix, i+1, j),
+					dm2dGetEntry(matrix, i,   j+1)
+				};
+				double value = average(arr, 4);
+				dm2dSetEntry(matrix_aux, i, j, value);
+			}
 		}
+
+		/* Switching pointers between matrices, avoids boilerplate code */
+		matrix_temp = matrix;
+		matrix = matrix_aux;
+		matrix_aux = matrix_temp;
 	}
-	// FIXME: return the resulting matrix
-	return matrix_aux;
+
+	return result;
 }
 
 /*--------------------------------------------------------------------
@@ -124,10 +134,7 @@ int main (int argc, char *argv[]) {
 	matrix = dm2dNew(N+2, N+2);
 	matrix_aux = dm2dNew(N+2, N+2);
 
-
 	/* FIXME: FAZER ALTERACOES AQUI */
-
-
 	dm2dSetLineTo(matrix, 0, tSup);
 	dm2dSetLineTo(matrix, N+1, tInf);
 	dm2dSetColumnTo(matrix, 0, tEsq);
