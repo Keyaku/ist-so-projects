@@ -23,7 +23,7 @@
 /*------------------------------------------------------------------+
 |  Function: lePrintQueue
 --------------------------------------------------------------------*/
-void lePrintQueue (qh_p)
+void lePrintQueue(qh_p)
     QueHead *qh_p;
 {
     QueElem *qe_p;

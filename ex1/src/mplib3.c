@@ -44,7 +44,7 @@ pthread_cond_t     wait_for_messages;
 | Description: Cria e devolve um ponteiro para um canal de comunicação.
 |              Em caso de erro devolve NULL.
 ---------------------------------------------------------------------*/
-Channel_t *createChannel () {
+Channel_t *createChannel() {
 	Channel_t *channel = malloc(sizeof(channel));
 
 	if (channel == NULL) {
@@ -145,18 +145,18 @@ void libertarMPlib() {
 
 			while (mess) {
 				if (channel_capacity>0) {
-					free (mess->contents);
+					free(mess->contents);
 				}
-				free (mess);
+				free(mess);
 				mess = (Message_t*) leQueRemFirst(channel->message_list);
 			}
 
 			/* delete message list header for this channel */
 			leQueFreeHead (channel->message_list);
-			free (channel);
+			free(channel);
 		}
 	}
-	free (channel_array);
+	free(channel_array);
 }
 
 

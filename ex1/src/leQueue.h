@@ -132,19 +132,19 @@ if (1) {\
 	((((QueElem*)qe_p)->next != (QueElem*)(&(qh_p->elem))) ? ((QueElem*)qe_p)->next : 0)
 
 #define leQueInsFirst(qh_p, qe_p)        \
-	leQueInsAfter (qh_p, &(qh_p->elem), ((QueElem*)qe_p))
+	leQueInsAfter(qh_p, &(qh_p->elem), ((QueElem*)qe_p))
 #define leQueInsLast(qh_p, qe_p)         \
-	leQueInsAfter (qh_p, ((QueHead*)qh_p)->elem.prev, ((QueElem*)qe_p))
+	leQueInsAfter(qh_p, ((QueHead*)qh_p)->elem.prev, ((QueElem*)qe_p))
 #define leQueInsBefore(qh_p, qb_p, qe_p) \
-	leQueInsAfter (qh_p, ((QueElem*)qb_p)->prev, ((QueElem*)qe_p))
+	leQueInsAfter(qh_p, ((QueElem*)qb_p)->prev, ((QueElem*)qe_p))
 
 #define leQueRemFirst(qh_p)  leQueRemElem (qh_p, ((QueHead*)qh_p)->elem.next)
 #define leQueRemLast(qh_p)   leQueRemElem (qh_p, ((QueHead*)qh_p)->elem.prev)
 
 #define leQueTestEmpty(qh_p)  (((QueHead*)qh_p)->nel == 0)
 
-#define leQueSize(qh_p)  (((QueHead*)qh_p)->nel)
-#define leQueNbElem(qh_p)  (((QueHead*)qh_p)->nel)
+#define leQueSize(qh_p)     (((QueHead*)qh_p)->nel)
+#define leQueNbElem(qh_p)   (((QueHead*)qh_p)->nel)
 #define leQueMaxElem(qh_p)  (((QueHead*)qh_p)->maxelem)
 
 
@@ -153,14 +153,14 @@ if (1) {\
 --------------------------------------------------------------------*/
 
 QueElem *leQueFindKey     (QueHead *h, int k);
-void      leQueInsAfter    (QueHead *h, QueElem*, QueElem *e);
-void      leQueInsByKey    (QueHead *h, QueElem *e);
+void      leQueInsAfter   (QueHead *h, QueElem*, QueElem *e);
+void      leQueInsByKey   (QueHead *h, QueElem *e);
 QueElem *leQueRemElem     (QueHead *h, QueElem *e);
 QueElem *leQueIsIn        (QueHead *h, QueElem *e);
-void      leQueExec        (QueHead *h, int (*func) ());
-void      leQueRemAllKey   (QueHead *h, int k);
-void      leQuePush        (QueHead *h, int k);
-void      leQueFreeAll     (QueHead *h);
-void      leQueDup         (QueHead *to, QueHead *from);
+void      leQueExec       (QueHead *h, int (*func) ());
+void      leQueRemAllKey  (QueHead *h, int k);
+void      leQuePush       (QueHead *h, int k);
+void      leQueFreeAll    (QueHead *h);
+void      leQueDup        (QueHead *to, QueHead *from);
 
 #endif /* LEQUEUE */

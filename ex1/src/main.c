@@ -24,6 +24,19 @@ double average(double *array, size_t size) {
 }
 
 /*--------------------------------------------------------------------
+| Function: "escrava"
+|
+| 1. Alocar e receber fatia enviada pela mestre
+| 2. Duplicar a fatia (i.e. criar fatia "auxiliar")
+| 3. Ciclo das iterações:
+|	3.1 Iterar pontos da fatia de calcular temperaturas
+|	3.2 Enviar/receber linhas adjacentes
+| 4. Enviar fatia calculada para a tarefa mestre
+|
+---------------------------------------------------------------------*/
+
+
+/*--------------------------------------------------------------------
 | Function: simul
 ---------------------------------------------------------------------*/
 DoubleMatrix2D *simul(
