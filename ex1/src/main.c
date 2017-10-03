@@ -40,6 +40,8 @@ DoubleMatrix2D *simul(
 		iteracoes -= 1;
 
 		for (int i = 1; i < linhas-1; i++) {
+			// FIXME: Criar thread que calcula a linha
+			// TODO: Ter em atenção os valores de cima e em baixo (que fazem parte de outra thread)
 			for (int j = 1; j < colunas-1; j++) {
 				double arr[] = {
 					dm2dGetEntry(matrix, i-1, j),
@@ -99,6 +101,13 @@ void is_arg_greater_equal_to(int value, int greater, const char *name) {
 
 /*--------------------------------------------------------------------
 | Function: main
+|
+| 1. Depois de inicializar a matriz, criar tarefas trabalhadoras
+| 2. Enviar fatias para cada tarefa trabalhadora
+| 3. Receber fatias calculadas de cada tarefa trabalhadora
+| 4. Esperar pela terminação das threads
+| 5. Imprimir resultado e libertar memória (usar valgrind)
+|
 ---------------------------------------------------------------------*/
 int main (int argc, char *argv[]) {
 	if (argc != 7) {
