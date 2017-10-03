@@ -9,6 +9,8 @@
 
 #include "matrix2d.h"
 
+#define ARRAY_LEN(arr) sizeof arr / sizeof *arr
+
 
 /*--------------------------------------------------------------------
 | Function: average
@@ -135,23 +137,32 @@ int main (int argc, char *argv[]) {
 	double tSup = parse_double_or_exit(argv[3], "tSup");
 	double tDir = parse_double_or_exit(argv[4], "tDir");
 	double tInf = parse_double_or_exit(argv[5], "tInf");
-	int iteracoes = parse_integer_or_exit(argv[6], "iteracoes");
+	int it = parse_integer_or_exit(argv[6], "iteracoes");
 
 	DoubleMatrix2D *matrix, *matrix_aux, *result;
 
 
 	fprintf(stderr, "\nArgumentos:\n"
-	" N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iteracoes=%d\n",
-	N, tEsq, tSup, tDir, tInf, iteracoes);
+		"    N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iteracoes=%d\n",
+		N, tEsq, tSup, tDir, tInf, it
+	);
 
 
 	/* VERIFICAR SE ARGUMENTOS ESTAO CONFORME O ENUNCIADO */
-	is_arg_greater_equal_to(N, 1, "N");
-	is_arg_greater_equal_to(tEsq, 0, "tEsq");
-	is_arg_greater_equal_to(tSup, 0, "tSup");
-	is_arg_greater_equal_to(tDir, 0, "tDir");
-	is_arg_greater_equal_to(tInf, 0, "tInf");
-	is_arg_greater_equal_to(iteracoes, 1, "iteracoes");
+	struct {
+		double arg, val;
+		const char* name;
+	} arg_checker[] = {
+		{ N,    1, "N"         },
+		{ it,   1, "iteracoes" },
+		{ tEsq, 0, "tEsq"      },
+		{ tSup, 0, "tSup"      },
+		{ tDir, 0, "tDir"      },
+		{ tInf, 0, "tInf"      }
+	};
+	for (size_t i = 0; i < ARRAY_LEN(arg_checker); i++) {
+		is_arg_greater_equal_to(arg_checker[i].arg, arg_checker[i].val, arg_checker[i].name);
+	}
 
 	matrix = dm2dNew(N+2, N+2);
 	matrix_aux = dm2dNew(N+2, N+2);
@@ -164,7 +175,7 @@ int main (int argc, char *argv[]) {
 
 	dm2dCopy(matrix_aux, matrix);
 
-	result = simul(matrix, matrix_aux, N+2, N+2, iteracoes);
+	result = simul(matrix, matrix_aux, N+2, N+2, it);
 	dm2dPrint(result);
 
 	dm2dFree(matrix);
