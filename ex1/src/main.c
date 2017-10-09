@@ -122,7 +122,7 @@ void is_arg_greater_equal_to(int value, int greater, const char *name) {
 | 2. [ ] Enviar fatias para cada tarefa trabalhadora
 | 3. [ ] Receber fatias calculadas de cada tarefa trabalhadora
 | 4. [ ] Esperar pela terminação das threads
-| 5. [ ] Imprimir resultado e libertar memória (usar valgrind)
+| 5. [√] Imprimir resultado e libertar memória (usar valgrind)
 |
 ---------------------------------------------------------------------*/
 int main (int argc, char *argv[]) {

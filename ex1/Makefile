@@ -9,7 +9,7 @@ LD = $(CC)
 CFLAGS = -O0 -g -c -pedantic -Wall $(INCLUDE)
 #LDFLAGS = -pthread
 
-ZIPFILE = exo.zip
+ZIPFILE = ex1-g48.zip
 EXECFILE ?= heatSim
 
 ################################################################################
