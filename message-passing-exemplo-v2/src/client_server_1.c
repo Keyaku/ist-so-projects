@@ -1,7 +1,7 @@
 
 /*--------------------------------------------------------------------
 | Disclamer: Este código foi feito um pouco à pressa. Não
-|						está perfeito mas ilustra a utilização da mplib
+|            está perfeito mas ilustra a utilização da mplib
 | v2: alguns warnings corrigidos.
 ---------------------------------------------------------------------*/
 
@@ -46,14 +46,13 @@ char *strupr (char *str){
 /*--------------------------------------------------------------------
 | Function: slaveThread
 | Description: envia numa mensagem para a thread 0 e espera uma resposta
-|							faz isto n vezes
+|              faz isto n vezes
 ---------------------------------------------------------------------*/
-
 void *slaveThread(void *a) {
 	char send_buff[BUFFSZ];
 	char receive_buff[BUFFSZ];
 	argsSimular_t *arg = (argsSimular_t *) a;
-	int	myid = arg->id;
+	int myid = arg->id;
 	int i,j;
 
 	for (i=0; i<STRSZ; i++) {
@@ -73,7 +72,8 @@ void *slaveThread(void *a) {
 /*--------------------------------------------------------------------
 | Function: main
 | Description: cria n threads
-| para cada um dos filhos recebe uma mensagem e envia uma resposta n vezes
+|              para cada um dos filhos recebe uma mensagem e envia
+|              uma resposta n vezes
 ---------------------------------------------------------------------*/
 
 
@@ -97,8 +97,8 @@ int main (int argc, char* argv[]) {
 		return 1;
 	}
 
-	slave_args = (argsSimular_t*)malloc(numTarefas*sizeof(argsSimular_t));
-	slaves     = (pthread_t*)malloc(numTarefas*sizeof(pthread_t));
+	slave_args = malloc(numTarefas * sizeof(*slave_args));
+	slaves     = malloc(numTarefas * sizeof(*slaves));
 
 	if (inicializarMPlib(1,numTarefas+1) == -1) {
 		printf("Erro ao inicializar MPLib.\n");
@@ -109,7 +109,7 @@ int main (int argc, char* argv[]) {
 	/* create slaves */
 	for (i=0; i<numTarefas; i++) {
 		slave_args[i].id = i+1;
-		slave_args[i].n	= numTarefas;
+		slave_args[i].n  = numTarefas;
 
 		pthread_create(&slaves[i], NULL, slaveThread, &slave_args[i]);
 	}
@@ -117,7 +117,6 @@ int main (int argc, char* argv[]) {
 	for (i=0; i<numTarefas; i++) {
 		for (j=0; j<numTarefas; j++) {
 			receberMensagem(i+1, 0, buff, BUFFSZ);
-			printf("%s", buff);
 			strupr(buff);
 			enviarMensagem(0, i+1, buff, strlen(buff)+1);
 		}
