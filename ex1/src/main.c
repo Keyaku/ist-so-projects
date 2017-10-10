@@ -13,8 +13,9 @@
 
 #define ARRAY_LEN(arr) sizeof arr / sizeof *arr
 
-/* Número de linhas a processar por tarefa trabalhadora */
-int k;
+/* Variáveis globais */
+int N; /* Tamanho de linhas/colunas */
+int k; /* Número de linhas a processar por tarefa trabalhadora */
 
 /*--------------------------------------------------------------------
 | Function: average
@@ -27,26 +28,6 @@ double average(double *array, size_t size) {
 	}
 
 	return result / size;
-}
-
-/*--------------------------------------------------------------------
-| Function: "escrava"
-|
-| 1. Alocar e receber fatia enviada pela mestre
-| 2. Duplicar a fatia (i.e. criar fatia "auxiliar")
-| 3. Ciclo das iterações:
-|	3.1 Iterar pontos da fatia de calcular temperaturas
-|	3.2 Enviar/receber linhas adjacentes
-| 4. Enviar fatia calculada para a tarefa mestre
-|
----------------------------------------------------------------------*/
-typedef struct {
-	size_t size;
-	int id, first_line;
-} simul_args_t;
-
-void *slave_thread(void *arg) {
-	return 0;
 }
 
 /*--------------------------------------------------------------------
@@ -99,12 +80,78 @@ DoubleMatrix2D *simul(
 DoubleMatrix2D *simul_multithread(
 	DoubleMatrix2D *matrix,
 	DoubleMatrix2D *matrix_aux,
-	int linhas,
-	int colunas,
 	int iter
 ) {
 	DoubleMatrix2D *result = matrix;
+	double *receive_slice = NULL;
+
+	// TODO: Percorrer um dado número de iterações
+
+	/* Enviar matriz-raíz linha-a-linha */
+	for (int i = 0; i < N; i+=k) {
+		for (size_t slave_id = 0; slave_id < k; slave_id++) {
+			int l = i + slave_id;
+			enviarMensagem(0, slave_id+1, dm2dGetLine(matrix, l), N);
+		}
+	}
+
+	/* Receber matriz inteira calculada linha-a-linha */
+	for (int i = 0; i < N; i+=k) {
+		for (size_t slave_id = 0; slave_id < k; slave_id++) {
+			int l = i + slave_id;
+			receberMensagem(slave_id+1, 0, receive_slice, N);
+			dm2dSetLine(result, l, receive_slice);
+		}
+	}
+
 	return result;
+}
+
+/*--------------------------------------------------------------------
+| Function: "escrava"
+|
+| 1. Alocar e receber fatia enviada pela mestre
+| 2. Duplicar a fatia (i.e. criar fatia "auxiliar")
+| 3. Ciclo das iterações:
+|	3.1 Iterar pontos da fatia de calcular temperaturas
+|	3.2 Enviar/receber linhas adjacentes
+| 4. Enviar fatia calculada para a tarefa mestre
+|
+| O que é uma fatia?
+| Uma mini-matriz de (k+2) x (N+2). A maneira indicada, mas consome muito mais
+| memória.
+---------------------------------------------------------------------*/
+typedef struct {
+	int id;
+} simul_args_t;
+
+void *slave_thread(void *arg) {
+	simul_args_t *bucket = (simul_args_t*) arg;
+	double *receive_slice = NULL;
+	int myid = bucket->id;
+
+	/* Criar a nossa mini-matriz */
+	DoubleMatrix2D *mini_matrix = dm2dNew(k+2, N+2);
+	DoubleMatrix2D *mini_aux = NULL, *result = NULL;
+
+	/* Receber a matriz linha a linha */
+	for (int i = 0; i < k; i++) {
+		receberMensagem(0, myid, receive_slice, N);
+		dm2dSetLine(mini_matrix, i, receive_slice);
+	}
+	dm2dCopy(mini_aux, mini_matrix);
+
+	/* Fazer cálculos */
+	result = simul(mini_matrix, mini_aux, k+2, N+2, 1);
+
+	/* Enviar matrix calculada linha a linha */
+	for (int i = 0; i < k; i++) {
+		enviarMensagem(myid, 0, dm2dGetLine(result, i), N);
+	}
+
+	dm2dFree(mini_matrix);
+	dm2dFree(mini_aux);
+	return 0;
 }
 
 /*--------------------------------------------------------------------
@@ -149,7 +196,7 @@ void is_arg_greater_equal_to(int value, int greater, const char *name) {
 | 1. [√] Depois de inicializar a matriz, criar tarefas trabalhadoras
 | 2. [ ] Enviar fatias para cada tarefa trabalhadora
 | 3. [ ] Receber fatias calculadas de cada tarefa trabalhadora
-| 4. [ ] Esperar pela terminação das threads
+| 4. [√] Esperar pela terminação das threads
 | 5. [√] Imprimir resultado e libertar memória (usar valgrind)
 |
 ---------------------------------------------------------------------*/
@@ -164,7 +211,7 @@ int main (int argc, char *argv[]) {
 	size_t idx;
 
 	/* argv[0] = program name */
-	int N    = parse_integer_or_exit(argv[1], "N");
+	N        = parse_integer_or_exit(argv[1], "N");
 	int iter = parse_integer_or_exit(argv[6], "iter");
 	int trab = 1, csz = 1;
 	if (8 <= argc && argc <= 9) {
@@ -233,7 +280,7 @@ int main (int argc, char *argv[]) {
 		}
 
 		for (idx = 0; idx < trab; idx++) {
-			// FIXME: inicializar cada slave_arg
+			slave_args[idx].id = idx+1;
 
 			pthread_create(&slaves[idx], NULL, slave_thread, &slave_args[idx]);
 		}
@@ -242,7 +289,7 @@ int main (int argc, char *argv[]) {
 	/* Lancemos a simulação e mostramos o resultado */
 	DoubleMatrix2D *result;
 	if (trab > 1) {
-		result = simul_multithread(matrix, matrix_aux, N+2, N+2, iter);
+		result = simul_multithread(matrix, matrix_aux, iter);
 	} else {
 		result = simul(matrix, matrix_aux, N+2, N+2, iter);
 	}
