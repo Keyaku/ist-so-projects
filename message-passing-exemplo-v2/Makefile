@@ -7,7 +7,7 @@ INCLUDE += -I$(SRCDIR)
 CC = gcc
 LD = $(CC)
 CFLAGS = -O0 -g -c -pedantic -Wall $(INCLUDE)
-#LDFLAGS = -pthread
+LDFLAGS = -pthread
 
 ZIPFILE = ex1-g48.zip
 EXECFILE ?= client_server_1
