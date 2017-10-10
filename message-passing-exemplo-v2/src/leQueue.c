@@ -23,15 +23,16 @@
 /*------------------------------------------------------------------+
 |  Function: lePrintQueue
 --------------------------------------------------------------------*/
+
 void lePrintQueue(qh_p)
-    QueHead *qh_p;
+	QueHead *qh_p;
 {
     QueElem *qe_p;
 
     printf ("<");
     for (
 		qe_p = (QueElem*) leQueGetFirst(qh_p);
-		qe_p; // while (qe_p != NULL)
+		qe_p;
 		qe_p = (QueElem*) leQueGetNext(qh_p, qe_p)
 	) {
 		printf (".%d.", qe_p->key);
@@ -61,7 +62,7 @@ QueElem *leQueRemElem(qh_p, qe_p)
 /*------------------------------------------------------------------+
 |  Function: leQueInsAfter
 --------------------------------------------------------------------*/
-void leQueInsAfter (qh_p, qe_aft_p, qe_p)
+void leQueInsAfter(qh_p, qe_aft_p, qe_p)
 	QueHead *qh_p;
 	QueElem *qe_aft_p, *qe_p;
 {
@@ -76,7 +77,7 @@ void leQueInsAfter (qh_p, qe_aft_p, qe_p)
 /*------------------------------------------------------------------+
 |  Function: leQueFindKey
 --------------------------------------------------------------------*/
-QueElem *leQueFindKey (qh_p, key)
+QueElem *leQueFindKey(qh_p, key)
 	QueHead *qh_p;
 	int      key;
 {
@@ -95,7 +96,7 @@ QueElem *leQueFindKey (qh_p, key)
 /*------------------------------------------------------------------+
 |  Function: leQueueIsIn
 --------------------------------------------------------------------*/
-QueElem *leQueueIsIn (qh_p, elm)
+QueElem *leQueueIsIn(qh_p, elm)
 	QueHead *qh_p;
 	QueElem *elm;
 {
@@ -116,13 +117,13 @@ QueElem *leQueueIsIn (qh_p, elm)
 --------------------------------------------------------------------*/
 void leQueExec(qh_p, func)
 	QueHead *qh_p;
-	int (*func)();
+	int (*func) ();
 {
     QueElem *qe_p;
 
     for (
 		qe_p = (QueElem*) leQueGetFirst(qh_p);
-		qe_p; // while (qe_p != NULL)
+		qe_p;
 		qe_p = (QueElem*) leQueGetNext(qh_p, qe_p)
 	) {
 		(*func) (qe_p);
@@ -157,8 +158,7 @@ void leQueInsByKey(qh_p, qe_p)
 /*------------------------------------------------------------------+
 |  Function: leQueRemAllKey
 --------------------------------------------------------------------*/
-void leQueRemAllKey(QueHead *h, int k)
-{
+void leQueRemAllKey(QueHead *h, int k){
 	QueElem *q_e;
 
 	while ( (q_e=leQueFindKey(h, k)) ) {
@@ -171,8 +171,7 @@ void leQueRemAllKey(QueHead *h, int k)
 /*------------------------------------------------------------------+
 |  Function: leQuePush
 --------------------------------------------------------------------*/
-void leQuePush(QueHead *q_h, int k)
-{
+void leQuePush(QueHead *q_h, int k) {
 	QueElem *q_e = leQueNewElem();
 
 	leQueElemInit(q_e);
@@ -190,8 +189,7 @@ void leQuePush(QueHead *q_h, int k)
 /*------------------------------------------------------------------+
 |  Function: leQueFreeAll
 --------------------------------------------------------------------*/
-void leQueFreeAll(QueHead *q_h)
-{
+void leQueFreeAll(QueHead *q_h) {
 	QueElem *q_e;
 
 	while ( (q_e = leQueRemFirst(q_h)) ) {

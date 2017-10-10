@@ -45,7 +45,7 @@ pthread_cond_t     wait_for_messages;
 |              Em caso de erro devolve NULL.
 ---------------------------------------------------------------------*/
 Channel_t *createChannel() {
-	Channel_t *channel = malloc(sizeof(channel));
+	Channel_t *channel = malloc(sizeof(*channel));
 
 	if (channel == NULL) {
 		fprintf(stderr, "\nErro ao alocar memória para canal\n");
@@ -78,7 +78,7 @@ int inicializarMPlib(int capacidade_de_cada_canal, int ntasks) {
 
 	number_of_tasks  = ntasks;
 	channel_capacity = capacidade_de_cada_canal;
-	channel_array    = malloc(sizeof(*channel_array) * ntasks*ntasks);
+	channel_array    = malloc(ntasks*ntasks * sizeof(**channel_array));
 
 	if (channel_array == NULL) {
 		fprintf(stderr, "\nErro ao alocar memória para MPlib\n");
@@ -110,7 +110,6 @@ int inicializarMPlib(int capacidade_de_cada_canal, int ntasks) {
 			channel_array[i*number_of_tasks+j] = channel;
 		}
 	}
-
 	return 0;
 }
 
@@ -152,7 +151,7 @@ void libertarMPlib() {
 			}
 
 			/* delete message list header for this channel */
-			leQueFreeHead (channel->message_list);
+			leQueFreeHead(channel->message_list);
 			free(channel);
 		}
 	}
@@ -188,12 +187,12 @@ int receberMensagem(int tarefaOrig, int tarefaDest, void *buffer, int tamanho) {
 			fprintf(stderr, "\nErro ao esperar pela variável de condição\n");
 			return -1;
 		}
-		mess = (Message_t*) leQueRemFirst (channel->message_list);
+		mess = (Message_t*) leQueRemFirst(channel->message_list);
 	}
 
 	copysize = (mess->mess_size<tamanho) ? mess->mess_size : tamanho;
 	memcpy(buffer, mess->contents, copysize);
-	if (channel_capacity >0) {
+	if (channel_capacity > 0) {
 		free(mess->contents);
 		free(mess);
 	} else {
@@ -229,7 +228,7 @@ int enviarMensagem(int tarefaOrig, int tarefaDest, void *msg, int tamanho) {
 	Channel_t *channel;
 	Message_t *mess;
 
-	mess = malloc(sizeof(mess));
+	mess = malloc(sizeof(*mess));
 
 	if (mess == NULL) {
 		fprintf(stderr, "\nErro ao alocar memória para mensagem\n");
