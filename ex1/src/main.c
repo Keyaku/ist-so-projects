@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include "matrix2d.h"
 #include "mplib3.h"
@@ -39,11 +40,34 @@ double average(double *array, size_t size) {
 | 4. Enviar fatia calculada para a tarefa mestre
 |
 ---------------------------------------------------------------------*/
-// TODO
+typedef struct {
+	size_t size;
+	int id, first_line;
+} simul_args_t;
+
+void *slave_thread(void *arg) {
+	return 0;
+}
 
 /*--------------------------------------------------------------------
 | Function: simul
 ---------------------------------------------------------------------*/
+void process_entry(
+	DoubleMatrix2D *matrix,
+	DoubleMatrix2D *matrix_aux,
+	int i,
+	int j
+) {
+	double arr[] = {
+		dm2dGetEntry(matrix, i-1, j),
+		dm2dGetEntry(matrix, i,   j-1),
+		dm2dGetEntry(matrix, i+1, j),
+		dm2dGetEntry(matrix, i,   j+1)
+	};
+	double value = average(arr, ARRAY_LEN(arr));
+	dm2dSetEntry(matrix_aux, i, j, value);
+}
+
 DoubleMatrix2D *simul(
 	DoubleMatrix2D *matrix,
 	DoubleMatrix2D *matrix_aux,
@@ -59,14 +83,7 @@ DoubleMatrix2D *simul(
 
 		for (int i = 1; i < linhas-1; i++) {
 			for (int j = 1; j < colunas-1; j++) {
-				double arr[] = {
-					dm2dGetEntry(matrix, i-1, j),
-					dm2dGetEntry(matrix, i,   j-1),
-					dm2dGetEntry(matrix, i+1, j),
-					dm2dGetEntry(matrix, i,   j+1)
-				};
-				double value = average(arr, ARRAY_LEN(arr));
-				dm2dSetEntry(matrix_aux, i, j, value);
+				process_entry(matrix, matrix_aux, i, j);
 			}
 		}
 
@@ -76,6 +93,17 @@ DoubleMatrix2D *simul(
 		matrix_aux = matrix_temp;
 	}
 
+	return result;
+}
+
+DoubleMatrix2D *simul_multithread(
+	DoubleMatrix2D *matrix,
+	DoubleMatrix2D *matrix_aux,
+	int linhas,
+	int colunas,
+	int iter
+) {
+	DoubleMatrix2D *result = matrix;
 	return result;
 }
 
@@ -132,6 +160,9 @@ int main (int argc, char *argv[]) {
 		return 1;
 	}
 
+	// Auxiliary variables
+	size_t idx;
+
 	/* argv[0] = program name */
 	int N    = parse_integer_or_exit(argv[1], "N");
 	int iter = parse_integer_or_exit(argv[6], "iter");
@@ -147,14 +178,10 @@ int main (int argc, char *argv[]) {
 	t.dir = parse_double_or_exit(argv[4], "tDir");
 	t.inf = parse_double_or_exit(argv[5], "tInf");
 
-	DoubleMatrix2D *matrix, *matrix_aux, *result;
-
-
 	fprintf(stderr, "\nArgumentos:\n"
 		"    N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d\n",
 		N, t.esq, t.sup, t.dir, t.inf, iter, trab, csz
 	);
-
 
 	/* VERIFICAR SE ARGUMENTOS ESTÃO CONFORME O ENUNCIADO */
 	struct {
@@ -170,17 +197,18 @@ int main (int argc, char *argv[]) {
 		{ trab,  1, "trab" },
 		{ csz,   1, "csz"  }
 	};
-	for (size_t idx = 0; idx < ARRAY_LEN(arg_checker); idx++) {
+	for (idx = 0; idx < ARRAY_LEN(arg_checker); idx++) {
 		is_arg_greater_equal_to(arg_checker[idx].arg, arg_checker[idx].val, arg_checker[idx].name);
 	}
 
 	k = N/trab;
 	if ((double) k != (double) N/trab) {
 		fprintf(stderr, "\ntrab não é um múltiplo de N\n");
-		exit(1);
+		return -1;
 	}
 
 	/* Criar matrizes */
+	DoubleMatrix2D *matrix, *matrix_aux;
 	matrix = dm2dNew(N+2, N+2);
 	matrix_aux = dm2dNew(N+2, N+2);
 
@@ -193,21 +221,46 @@ int main (int argc, char *argv[]) {
 	dm2dCopy(matrix_aux, matrix);
 
 	/* Lancemos as tarefas trabalhadoras */
+	pthread_t *slaves = NULL;
+	simul_args_t *slave_args = NULL;
 	if (trab > 1) {
+		slaves     = malloc(trab * sizeof(*slaves));
+		slave_args = malloc(trab * sizeof(*slave_args));
+
 		if (inicializarMPlib(csz, trab) == -1) {
 			fprintf(stderr, "Erro ao inicializar a MPlib.");
-			exit(1);
+			return -1;
+		}
+
+		for (idx = 0; idx < trab; idx++) {
+			// FIXME: inicializar cada slave_arg
+
+			pthread_create(&slaves[idx], NULL, slave_thread, &slave_args[idx]);
 		}
 	}
 
 	/* Lancemos a simulação e mostramos o resultado */
-	result = simul(matrix, matrix_aux, N+2, N+2, iter);
+	DoubleMatrix2D *result;
+	if (trab > 1) {
+		result = simul_multithread(matrix, matrix_aux, N+2, N+2, iter);
+	} else {
+		result = simul(matrix, matrix_aux, N+2, N+2, iter);
+	}
 	dm2dPrint(result);
 
 	/* Limpemos as nossas estruturas */
 	if (trab > 1) {
+		for (idx = 0; idx < trab; idx++) {
+			if (pthread_join(slaves[idx], NULL)) {
+				fprintf(stderr, "\nErro ao esperar por um escravo.\n");
+				return -1;
+			}
+		}
+
 		libertarMPlib();
 	}
+	free(slaves);
+	free(slave_args);
 	dm2dFree(matrix);
 	dm2dFree(matrix_aux);
 
