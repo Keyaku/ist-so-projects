@@ -22,6 +22,7 @@ static size_t buffer_size;
 static int N;    /* Tamanho de linhas/colunas */
 static int k;    /* Número de linhas a processar por tarefa trabalhadora */
 static int iter; /* Número de iterações a processar */
+static int trab; /* Número de trabalhadoras a lançar */
 
 /*--------------------------------------------------------------------
 | Function: average
@@ -43,16 +44,20 @@ DoubleMatrix2D *simul(
 	DoubleMatrix2D *matrix,
 	int linhas,
 	int colunas,
-	int it
+	int it,
+	int id
 ) {
 	DoubleMatrix2D *result = matrix;
 	DoubleMatrix2D *matrix_temp = NULL;
+	double *receive_slice = malloc(buffer_size);
+	int is_slave = linhas != colunas;
 
 	/* Criando uma matriz auxiliar */
 	DoubleMatrix2D *matrix_aux = dm2dNew(linhas, colunas);
 	dm2dCopy(matrix_aux, matrix);
 
 	while (it-- > 0) {
+		/* Processamos uma iteração */
 		for (int i = 1; i < linhas-1; i++) {
 			for (int j = 1; j < colunas-1; j++) {
 				double arr[] = {
@@ -70,16 +75,28 @@ DoubleMatrix2D *simul(
 		matrix_temp = matrix;
 		matrix = matrix_aux;
 		matrix_aux = matrix_temp;
+
+		/* Enviamos a primeira linha e última a trabalhadoras vizinhas */
+		if (is_slave) {
+			if (id > 1) {
+				enviarMensagem(id, id-1, dm2dGetLine(matrix, 0), buffer_size);
+				receberMensagem(id-1, id, receive_slice, buffer_size);
+				dm2dSetLine(matrix, 0, receive_slice);
+			}
+			if (id < trab) {
+				enviarMensagem(id, id+1, dm2dGetLine(matrix, linhas-1), buffer_size);
+				receberMensagem(id+1, id, receive_slice, buffer_size);
+				dm2dSetLine(matrix, linhas-1, receive_slice);
+			}
+		}
 	}
 
+	free(receive_slice);
 	dm2dFree(matrix_aux);
 	return result;
 }
 
-DoubleMatrix2D *simul_multithread(
-	DoubleMatrix2D *matrix,
-	int trab
-) {
+DoubleMatrix2D *simul_multithread(DoubleMatrix2D *matrix) {
 	DoubleMatrix2D *result = matrix;
 	double *receive_slice = malloc(buffer_size);
 	size_t idx;
@@ -153,8 +170,7 @@ void *slave_thread(void *arg) {
 	}
 
 	/* Fazer cálculos */
-	// TODO: enviar a primeira e última linha para outras tarefas
-	result = simul(mini_matrix, k+2, N+2, iter);
+	result = simul(mini_matrix, k+2, N+2, iter, myid);
 
 	/* Enviar matrix calculada linha a linha */
 	for (int i = 1; i < k+1; i++) {
@@ -223,9 +239,10 @@ int main(int argc, char *argv[]) {
 	size_t idx;
 
 	/* argv[0] = program name */
-	N        = parse_integer_or_exit(argv[1], "N");
-	iter     = parse_integer_or_exit(argv[6], "iter");
-	int trab = 1, csz = 1;
+	N       = parse_integer_or_exit(argv[1], "N");
+	iter    = parse_integer_or_exit(argv[6], "iter");
+	trab    = 1;
+	int csz = 1;
 	if (8 <= argc && argc <= 9) {
 		trab = parse_integer_or_exit(argv[7], "trab");
 		csz  = parse_integer_or_exit(argv[8], "csz");
@@ -284,11 +301,11 @@ int main(int argc, char *argv[]) {
 		}
 
 		buffer_size = (N+2) * sizeof(double); /* O nosso buffer tem que ser o número de colunas +2 */
-		result = simul_multithread(matrix, trab);
+		result = simul_multithread(matrix);
 
 		libertarMPlib();
 	} else {
-		result = simul(matrix, N+2, N+2, iter);
+		result = simul(matrix, N+2, N+2, iter, 0);
 	}
 	/* Mostramos o resultado */
 	dm2dPrint(result);
