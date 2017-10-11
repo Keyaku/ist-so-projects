@@ -111,4 +111,5 @@ void dm2dPrint(DoubleMatrix2D *matrix) {
 		}
 		printf ("\n");
 	}
+	printf ("\n");
 }
