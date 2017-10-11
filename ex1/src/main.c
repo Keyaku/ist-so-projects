@@ -79,12 +79,12 @@ DoubleMatrix2D *simul(
 		/* Enviamos a primeira linha e última a trabalhadoras vizinhas */
 		if (is_slave) {
 			if (id > 1) {
-				enviarMensagem(id, id-1, dm2dGetLine(matrix, 0), buffer_size);
+				enviarMensagem(id, id-1, dm2dGetLine(matrix, 1), buffer_size);
 				receberMensagem(id-1, id, receive_slice, buffer_size);
 				dm2dSetLine(matrix, 0, receive_slice);
 			}
 			if (id < trab) {
-				enviarMensagem(id, id+1, dm2dGetLine(matrix, linhas-1), buffer_size);
+				enviarMensagem(id, id+1, dm2dGetLine(matrix, linhas-2), buffer_size);
 				receberMensagem(id+1, id, receive_slice, buffer_size);
 				dm2dSetLine(matrix, linhas-1, receive_slice);
 			}
@@ -114,6 +114,7 @@ DoubleMatrix2D *simul_multithread(DoubleMatrix2D *matrix) {
 		for (int i = 0; i < k+2; i++) {
 			enviarMensagem(0, idx+1, dm2dGetLine(matrix, linha++), buffer_size);
 		}
+		linha -= 2;
 	}
 
 	/* Receber matriz inteira calculada linha-a-linha */
@@ -157,7 +158,7 @@ DoubleMatrix2D *simul_multithread(DoubleMatrix2D *matrix) {
 ---------------------------------------------------------------------*/
 void *slave_thread(void *arg) {
 	double *receive_slice = malloc(buffer_size);
-	int myid = *(int*) arg;
+	int id = *(int*) arg;
 
 	/* Criar a nossa mini-matriz */
 	DoubleMatrix2D *mini_matrix = dm2dNew(k+2, N+2);
@@ -165,16 +166,16 @@ void *slave_thread(void *arg) {
 
 	/* Receber a matriz linha a linha */
 	for (int i = 0; i < k+2; i++) {
-		receberMensagem(0, myid, receive_slice, buffer_size);
+		receberMensagem(0, id, receive_slice, buffer_size);
 		dm2dSetLine(mini_matrix, i, receive_slice);
 	}
 
 	/* Fazer cálculos */
-	result = simul(mini_matrix, k+2, N+2, iter, myid);
+	result = simul(mini_matrix, k+2, N+2, iter, id);
 
 	/* Enviar matrix calculada linha a linha */
 	for (int i = 1; i < k+1; i++) {
-		enviarMensagem(myid, 0, dm2dGetLine(result, i), buffer_size);
+		enviarMensagem(id, 0, dm2dGetLine(result, i), buffer_size);
 	}
 
 	free(receive_slice);
