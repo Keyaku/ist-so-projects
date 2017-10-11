@@ -21,9 +21,9 @@ typedef struct {
 void *slave_thread(void *arg);
 
 /* Variáveis globais */
-int N; /* Tamanho de linhas/colunas */
-int BUFFSZ;
-int k; /* Número de linhas a processar por tarefa trabalhadora */
+static size_t BUFFSZ;
+static int N; /* Tamanho de linhas/colunas */
+static int k; /* Número de linhas a processar por tarefa trabalhadora */
 
 /*--------------------------------------------------------------------
 | Function: average
@@ -92,12 +92,12 @@ DoubleMatrix2D *simul_multithread(
 	int iter // TODO: Percorrer um dado número de iterações
 ) {
 	DoubleMatrix2D *result = matrix;
-	double *receive_slice = NULL;
+	double *receive_slice = malloc(BUFFSZ);
 	size_t idx;
 	int linha = 0;
 
 	/* Inicializar tarefas uma a uma */
-	pthread_t *slaves        = malloc(trab * sizeof(*slaves));
+	pthread_t    *slaves     = malloc(trab * sizeof(*slaves));
 	simul_args_t *slave_args = malloc(trab * sizeof(*slave_args));
 
 	for (linha = 0, idx = 0; idx < trab; idx++) {
@@ -105,9 +105,10 @@ DoubleMatrix2D *simul_multithread(
 		pthread_create(&slaves[idx], NULL, slave_thread, &slave_args[idx]);
 
 		/* Enviar matriz-raíz linha-a-linha */
-		for (int i = 0; i < k; i++) {
+		for (int i = 0; i < k+2; i++) {
 			enviarMensagem(0, idx+1, dm2dGetLine(matrix, linha++), BUFFSZ);
 		}
+		linha--;
 	}
 
 	/* Receber matriz inteira calculada linha-a-linha */
@@ -127,6 +128,7 @@ DoubleMatrix2D *simul_multithread(
 	}
 
 	/* Limpar estruturas */
+	free(receive_slice);
 	free(slaves);
 	free(slave_args);
 
@@ -148,8 +150,8 @@ DoubleMatrix2D *simul_multithread(
 | memória.
 ---------------------------------------------------------------------*/
 void *slave_thread(void *arg) {
+	double *receive_slice = malloc(BUFFSZ);
 	simul_args_t *bucket = (simul_args_t*) arg;
-	double *receive_slice = malloc(N * sizeof(*receive_slice));
 	int myid = bucket->id;
 
 	/* Criar a nossa mini-matriz */
@@ -158,13 +160,14 @@ void *slave_thread(void *arg) {
 	DoubleMatrix2D *result = NULL;
 
 	/* Receber a matriz linha a linha */
-	for (int i = 0; i < k; i++) {
-		receberMensagem(0, myid, receive_slice, N);
+	for (int i = 0; i < k+2; i++) {
+		receberMensagem(0, myid, receive_slice, BUFFSZ);
 		dm2dSetLine(mini_matrix, i, receive_slice);
 	}
 	dm2dCopy(mini_aux, mini_matrix);
 
 	/* Fazer cálculos */
+	// TODO: enviar a primeira e última linha
 	result = simul(mini_matrix, mini_aux, k+2, N+2, 1);
 
 	/* Enviar matrix calculada linha a linha */
@@ -224,7 +227,7 @@ void is_arg_greater_equal_to(int value, int greater, const char *name) {
 | 5. [√] Imprimir resultado e libertar memória (usar valgrind)
 |
 ---------------------------------------------------------------------*/
-int main (int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 	if (argc != 7 && argc != 9) {
 		fprintf(stderr, "\nNumero invalido de argumentos.\n");
 		fprintf(stderr, "Uso: heatSim N tEsq tSup tDir tInf iter trab csz\n\n");
@@ -266,7 +269,7 @@ int main (int argc, char *argv[]) {
 		{ t.inf, 0, "tInf" },
 		{ iter,  1, "iter" },
 		{ trab,  1, "trab" },
-		{ csz,   1, "csz"  }
+		{ csz,   1, "csz"  } // TODO: Lower this value to 0
 	};
 	for (idx = 0; idx < ARRAY_LEN(arg_checker); idx++) {
 		is_arg_greater_equal_to(arg_checker[idx].arg, arg_checker[idx].val, arg_checker[idx].name);
@@ -294,12 +297,12 @@ int main (int argc, char *argv[]) {
 	/* Lancemos a simulação e mostramos o resultado */
 	DoubleMatrix2D *result;
 	if (trab > 1) {
-		if (inicializarMPlib(csz, trab) == -1) {
+		if (inicializarMPlib(csz, trab+1) == -1) {
 			fprintf(stderr, "Erro ao inicializar a MPlib.");
 			return -1;
 		}
 
-		BUFFSZ = N+2; /* O nosso buffer tem que ser o número de colunas +2 */
+		BUFFSZ = (N+2) * sizeof(double); /* O nosso buffer tem que ser o número de colunas +2 */
 		result = simul_multithread(matrix, matrix_aux, trab, iter);
 
 		libertarMPlib();
