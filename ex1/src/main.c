@@ -79,9 +79,9 @@ DoubleMatrix2D *simul(
 		/* Enviamos a primeira linha e última a trabalhadoras vizinhas */
 		if (is_slave) {
 			if (id > 1) {
-				enviarMensagem(id, id-1, dm2dGetLine(matrix, 1), buffer_size);
 				receberMensagem(id-1, id, receive_slice, buffer_size);
 				dm2dSetLine(matrix, 0, receive_slice);
+				enviarMensagem(id, id-1, dm2dGetLine(matrix, 1), buffer_size);
 			}
 			if (id < trab) {
 				enviarMensagem(id, id+1, dm2dGetLine(matrix, linhas-2), buffer_size);
@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
 	N       = parse_integer_or_exit(argv[1], "N");
 	iter    = parse_integer_or_exit(argv[6], "iter");
 	trab    = 1;
-	int csz = 1;
+	int csz = 0;
 	if (8 <= argc && argc <= 9) {
 		trab = parse_integer_or_exit(argv[7], "trab");
 		csz  = parse_integer_or_exit(argv[8], "csz");
@@ -272,7 +272,7 @@ int main(int argc, char *argv[]) {
 		{ t.inf, 0, "tInf" },
 		{ iter,  1, "iter" },
 		{ trab,  1, "trab" },
-		{ csz,   1, "csz"  } // TODO: Lower this value to 0
+		{ csz,   0, "csz"  }
 	};
 	for (idx = 0; idx < ARRAY_LEN(arg_checker); idx++) {
 		is_arg_greater_equal_to(arg_checker[idx].arg, arg_checker[idx].val, arg_checker[idx].name);
