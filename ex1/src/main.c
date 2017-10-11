@@ -41,13 +41,16 @@ double average(double *array, size_t size) {
 ---------------------------------------------------------------------*/
 DoubleMatrix2D *simul(
 	DoubleMatrix2D *matrix,
-	DoubleMatrix2D *matrix_aux,
 	int linhas,
 	int colunas,
 	int it
 ) {
 	DoubleMatrix2D *result = matrix;
 	DoubleMatrix2D *matrix_temp = NULL;
+
+	/* Criando uma matriz auxiliar */
+	DoubleMatrix2D *matrix_aux = dm2dNew(linhas, colunas);
+	dm2dCopy(matrix_aux, matrix);
 
 	while (it-- > 0) {
 		for (int i = 1; i < linhas-1; i++) {
@@ -69,6 +72,7 @@ DoubleMatrix2D *simul(
 		matrix_aux = matrix_temp;
 	}
 
+	dm2dFree(matrix_aux);
 	return result;
 }
 
@@ -140,7 +144,6 @@ void *slave_thread(void *arg) {
 
 	/* Criar a nossa mini-matriz */
 	DoubleMatrix2D *mini_matrix = dm2dNew(k+2, N+2);
-	DoubleMatrix2D *mini_aux    = dm2dNew(k+2, N+2);
 	DoubleMatrix2D *result = NULL;
 
 	/* Receber a matriz linha a linha */
@@ -148,11 +151,10 @@ void *slave_thread(void *arg) {
 		receberMensagem(0, myid, receive_slice, buffer_size);
 		dm2dSetLine(mini_matrix, i, receive_slice);
 	}
-	dm2dCopy(mini_aux, mini_matrix);
 
 	/* Fazer cálculos */
 	// TODO: enviar a primeira e última linha para outras tarefas
-	result = simul(mini_matrix, mini_aux, k+2, N+2, iter);
+	result = simul(mini_matrix, k+2, N+2, iter);
 
 	/* Enviar matrix calculada linha a linha */
 	for (int i = 1; i < k+1; i++) {
@@ -161,7 +163,6 @@ void *slave_thread(void *arg) {
 
 	free(receive_slice);
 	dm2dFree(mini_matrix);
-	dm2dFree(mini_aux);
 	return 0;
 }
 
@@ -287,12 +288,7 @@ int main(int argc, char *argv[]) {
 
 		libertarMPlib();
 	} else {
-		DoubleMatrix2D *matrix_aux = dm2dNew(N+2, N+2);
-		dm2dCopy(matrix_aux, matrix);
-
-		result = simul(matrix, matrix_aux, N+2, N+2, iter);
-
-		dm2dFree(matrix_aux);
+		result = simul(matrix, N+2, N+2, iter);
 	}
 	/* Mostramos o resultado */
 	dm2dPrint(result);
