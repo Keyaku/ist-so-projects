@@ -49,9 +49,7 @@ DoubleMatrix2D *simul(
 	DoubleMatrix2D *result = matrix;
 	DoubleMatrix2D *matrix_temp = NULL;
 
-	while (it > 0) {
-		it -= 1;
-
+	while (it-- > 0) {
 		for (int i = 1; i < linhas-1; i++) {
 			for (int j = 1; j < colunas-1; j++) {
 				double arr[] = {
