@@ -22,8 +22,9 @@ void *slave_thread(void *arg);
 
 /* Variáveis globais */
 static size_t BUFFSZ;
-static int N; /* Tamanho de linhas/colunas */
-static int k; /* Número de linhas a processar por tarefa trabalhadora */
+static int N;    /* Tamanho de linhas/colunas */
+static int k;    /* Número de linhas a processar por tarefa trabalhadora */
+static int iter; /* Número de iterações a processar */
 
 /*--------------------------------------------------------------------
 | Function: average
@@ -41,38 +42,29 @@ double average(double *array, size_t size) {
 /*--------------------------------------------------------------------
 | Function: simul
 ---------------------------------------------------------------------*/
-void process_entry(
-	DoubleMatrix2D *matrix,
-	DoubleMatrix2D *matrix_aux,
-	int i,
-	int j
-) {
-	double arr[] = {
-		dm2dGetEntry(matrix, i-1, j),
-		dm2dGetEntry(matrix, i,   j-1),
-		dm2dGetEntry(matrix, i+1, j),
-		dm2dGetEntry(matrix, i,   j+1)
-	};
-	double value = average(arr, ARRAY_LEN(arr));
-	dm2dSetEntry(matrix_aux, i, j, value);
-}
-
 DoubleMatrix2D *simul(
 	DoubleMatrix2D *matrix,
 	DoubleMatrix2D *matrix_aux,
 	int linhas,
 	int colunas,
-	int iter
+	int it
 ) {
 	DoubleMatrix2D *result = matrix;
 	DoubleMatrix2D *matrix_temp = NULL;
 
-	while (iter > 0) {
-		iter -= 1;
+	while (it > 0) {
+		it -= 1;
 
 		for (int i = 1; i < linhas-1; i++) {
 			for (int j = 1; j < colunas-1; j++) {
-				process_entry(matrix, matrix_aux, i, j);
+				double arr[] = {
+					dm2dGetEntry(matrix, i-1, j),
+					dm2dGetEntry(matrix, i,   j-1),
+					dm2dGetEntry(matrix, i+1, j),
+					dm2dGetEntry(matrix, i,   j+1)
+				};
+				double value = average(arr, ARRAY_LEN(arr));
+				dm2dSetEntry(matrix_aux, i, j, value);
 			}
 		}
 
@@ -87,9 +79,7 @@ DoubleMatrix2D *simul(
 
 DoubleMatrix2D *simul_multithread(
 	DoubleMatrix2D *matrix,
-	DoubleMatrix2D *matrix_aux,
-	int trab,
-	int iter // TODO: Percorrer um dado número de iterações
+	int trab
 ) {
 	DoubleMatrix2D *result = matrix;
 	double *receive_slice = malloc(BUFFSZ);
@@ -167,8 +157,8 @@ void *slave_thread(void *arg) {
 	dm2dCopy(mini_aux, mini_matrix);
 
 	/* Fazer cálculos */
-	// TODO: enviar a primeira e última linha
-	result = simul(mini_matrix, mini_aux, k+2, N+2, 1);
+	// TODO: enviar a primeira e última linha para outras tarefas
+	result = simul(mini_matrix, mini_aux, k+2, N+2, iter);
 
 	/* Enviar matrix calculada linha a linha */
 	for (int i = 0; i < k; i++) {
@@ -221,7 +211,7 @@ void is_arg_greater_equal_to(int value, int greater, const char *name) {
 | Function: main
 |
 | 1. [√] Depois de inicializar a matriz, criar tarefas trabalhadoras
-| 2. [ ] Enviar fatias para cada tarefa trabalhadora
+| 2. [√] Enviar fatias para cada tarefa trabalhadora
 | 3. [ ] Receber fatias calculadas de cada tarefa trabalhadora
 | 4. [√] Esperar pela terminação das threads
 | 5. [√] Imprimir resultado e libertar memória (usar valgrind)
@@ -239,7 +229,7 @@ int main(int argc, char *argv[]) {
 
 	/* argv[0] = program name */
 	N        = parse_integer_or_exit(argv[1], "N");
-	int iter = parse_integer_or_exit(argv[6], "iter");
+	iter     = parse_integer_or_exit(argv[6], "iter");
 	int trab = 1, csz = 1;
 	if (8 <= argc && argc <= 9) {
 		trab = parse_integer_or_exit(argv[7], "trab");
@@ -282,19 +272,15 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Criar matrizes */
-	DoubleMatrix2D *matrix, *matrix_aux;
-	matrix = dm2dNew(N+2, N+2);
-	matrix_aux = dm2dNew(N+2, N+2);
+	DoubleMatrix2D *matrix = dm2dNew(N+2, N+2);
 
-	/* FAZER ALTERACOES AQUI */
+	/* Preenchendo a nossa matriz de acordo com os argumentos */
 	dm2dSetLineTo(matrix, 0, t.sup);
 	dm2dSetLineTo(matrix, N+1, t.inf);
 	dm2dSetColumnTo(matrix, 0, t.esq);
 	dm2dSetColumnTo(matrix, N+1, t.dir);
 
-	dm2dCopy(matrix_aux, matrix);
-
-	/* Lancemos a simulação e mostramos o resultado */
+	/* Lancemos a simulação */
 	DoubleMatrix2D *result;
 	if (trab > 1) {
 		if (inicializarMPlib(csz, trab+1) == -1) {
@@ -303,17 +289,20 @@ int main(int argc, char *argv[]) {
 		}
 
 		BUFFSZ = (N+2) * sizeof(double); /* O nosso buffer tem que ser o número de colunas +2 */
-		result = simul_multithread(matrix, matrix_aux, trab, iter);
+		result = simul_multithread(matrix, trab);
 
 		libertarMPlib();
 	} else {
+		DoubleMatrix2D *matrix_aux = dm2dNew(N+2, N+2);
+		dm2dCopy(matrix_aux, matrix);
+
 		result = simul(matrix, matrix_aux, N+2, N+2, iter);
+
+		dm2dFree(matrix_aux);
 	}
+	/* Mostramos o resultado */
 	dm2dPrint(result);
 
-	/* Limpemos as nossas estruturas */
 	dm2dFree(matrix);
-	dm2dFree(matrix_aux);
-
 	return 0;
 }
