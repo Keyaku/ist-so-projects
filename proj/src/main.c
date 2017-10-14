@@ -13,6 +13,8 @@
 
 #define ARRAY_LEN(arr) sizeof arr / sizeof *arr
 
+/* Protótipos */
+int is_arg_null(void *arg, const char *name);
 
 /* Estruturas pessoais */
 void *slave_thread(void *arg);
@@ -54,6 +56,16 @@ DoubleMatrix2D *simul(
 
 	/* Criando uma matriz auxiliar */
 	DoubleMatrix2D *matrix_aux = dm2dNew(linhas, colunas);
+
+	/* Verificar se as alocações foram bem sucedidas */
+	if (is_arg_null(receive_slice, "receive_slice")) {
+		exit(1);
+	}
+	if (is_arg_null(matrix_aux, "matrix_aux")) {
+		free(receive_slice);
+		exit(1);
+	}
+
 	dm2dCopy(matrix_aux, matrix);
 
 	while (it-- > 0) {
@@ -106,9 +118,34 @@ DoubleMatrix2D *simul_multithread(DoubleMatrix2D *matrix) {
 	pthread_t *slaves     = malloc(trab * sizeof(*slaves));
 	int       *slave_args = malloc(trab * sizeof(*slave_args));
 
+	/* Verificar se as alocações foram bem sucedidas */
+	if (is_arg_null(receive_slice, "receive_slice")) {
+		exit(1);
+	}
+	if (is_arg_null(slaves, "slaves")) {
+		free(receive_slice);
+		exit(1);
+	}
+	if (is_arg_null(slave_args, "slave_args")) {
+		free(receive_slice);
+		free(slaves);
+		exit(1);
+	}
+
+	/* Primeiro set de iterações */
 	for (idx = 0; idx < trab; idx++) {
 		slave_args[idx] = idx+1;
-		pthread_create(&slaves[idx], NULL, slave_thread, &slave_args[idx]);
+
+		/* Verificando se o fio de execução foi correctamente criado */
+		if (pthread_create(&slaves[idx], NULL, slave_thread, &slave_args[idx])) {
+			fprintf(stderr, "\nErro ao criar um escravo\n");
+
+			free(receive_slice);
+			free(slaves);
+			free(slave_args);
+
+			exit(1);
+		}
 
 		/* Enviar matriz-raíz linha-a-linha */
 		for (int i = 0; i < k+2; i++) {
@@ -130,6 +167,11 @@ DoubleMatrix2D *simul_multithread(DoubleMatrix2D *matrix) {
 	for (idx = 0; idx < trab; idx++) {
 		if (pthread_join(slaves[idx], NULL)) {
 			fprintf(stderr, "\nErro ao esperar por um escravo.\n");
+
+			free(receive_slice);
+			free(slaves);
+			free(slave_args);
+
 			exit(1);
 		}
 	}
@@ -184,7 +226,9 @@ void *slave_thread(void *arg) {
 }
 
 /*--------------------------------------------------------------------
-| Function: parse_integer_or_exit
+| Function: Parsing from standard input
+| - parse_integer_or_exit()
+| - parse_double_or_exit()
 ---------------------------------------------------------------------*/
 int parse_integer_or_exit(const char *str, const char *name) {
 	int value;
@@ -196,9 +240,6 @@ int parse_integer_or_exit(const char *str, const char *name) {
 	return value;
 }
 
-/*--------------------------------------------------------------------
-| Function: parse_double_or_exit
----------------------------------------------------------------------*/
 double parse_double_or_exit(const char *str, const char *name) {
 	double value;
 
@@ -210,7 +251,9 @@ double parse_double_or_exit(const char *str, const char *name) {
 }
 
 /*--------------------------------------------------------------------
-| Function: is_arg_greater_equal_to
+| Function: Arguments checking
+| - is_arg_greater_equal_to(value, greater, name)
+| - is_arg_null(argument, name)
 ---------------------------------------------------------------------*/
 void is_arg_greater_equal_to(int value, int greater, const char *name) {
 	if (value < greater) {
@@ -219,14 +262,22 @@ void is_arg_greater_equal_to(int value, int greater, const char *name) {
 	}
 }
 
+int is_arg_null(void *arg, const char *name) {
+	if (arg == NULL) {
+		fprintf(stderr, "\nErro ao alocar memória para \"%s\"\n\n", name);
+		return -1;
+	}
+	return 0;
+}
+
 /*--------------------------------------------------------------------
 | Function: main
 |
-| 1. [√] Depois de inicializar a matriz, criar tarefas trabalhadoras
-| 2. [√] Enviar fatias para cada tarefa trabalhadora
-| 3. [ ] Receber fatias calculadas de cada tarefa trabalhadora
-| 4. [√] Esperar pela terminação das threads
-| 5. [√] Imprimir resultado e libertar memória (usar valgrind)
+| 1. Depois de inicializar a matriz, criar tarefas trabalhadoras
+| 2. Enviar fatias para cada tarefa trabalhadora
+| 3. Receber fatias calculadas de cada tarefa trabalhadora
+| 4. Esperar pela terminação das threads
+| 5. Imprimir resultado e libertar memória (usar valgrind)
 |
 ---------------------------------------------------------------------*/
 int main(int argc, char *argv[]) {
@@ -286,6 +337,7 @@ int main(int argc, char *argv[]) {
 
 	/* Criar matrizes */
 	DoubleMatrix2D *matrix = dm2dNew(N+2, N+2);
+	is_arg_null(matrix, "matrix");
 
 	/* Preenchendo a nossa matriz de acordo com os argumentos */
 	dm2dSetLineTo(matrix, 0, t.sup);
