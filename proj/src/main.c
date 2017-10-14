@@ -364,7 +364,7 @@ int main(int argc, char *argv[]) {
 	DoubleMatrix2D *result;
 	if (trab > 1) {
 		if (inicializarMPlib(csz, trab+1) == -1) {
-			fprintf(stderr, "Erro ao inicializar a MPlib.");
+			fprintf(stderr, "\nErro ao inicializar a MPlib.\n");
 			return -1;
 		}
 
