@@ -7,7 +7,10 @@ INCLUDE += -I$(SRCDIR)
 CC = gcc
 LD = $(CC)
 CFLAGS = -O0 -g -c -pedantic -Wall $(INCLUDE)
-LDFLAGS = -pthread
+
+ifneq ($(shell uname), Darwin)
+	LDFLAGS = -pthread
+endif
 
 ZIPFILE = ex1-g48.zip
 EXECFILE ?= heatSim
