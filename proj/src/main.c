@@ -59,11 +59,11 @@ DoubleMatrix2D *simul(
 
 	/* Verificar se as alocações foram bem sucedidas */
 	if (is_arg_null(receive_slice, "receive_slice")) {
-		exit(1);
+		return NULL;
 	}
 	if (is_arg_null(matrix_aux, "matrix_aux")) {
 		free(receive_slice);
-		exit(1);
+		return NULL;
 	}
 
 	dm2dCopy(matrix_aux, matrix);
@@ -120,16 +120,16 @@ DoubleMatrix2D *simul_multithread(DoubleMatrix2D *matrix) {
 
 	/* Verificar se as alocações foram bem sucedidas */
 	if (is_arg_null(receive_slice, "receive_slice")) {
-		exit(1);
+		return NULL;
 	}
 	if (is_arg_null(slaves, "slaves")) {
 		free(receive_slice);
-		exit(1);
+		return NULL;
 	}
 	if (is_arg_null(slave_args, "slave_args")) {
 		free(receive_slice);
 		free(slaves);
-		exit(1);
+		return NULL;
 	}
 
 	/* Primeiro set de iterações */
@@ -144,7 +144,7 @@ DoubleMatrix2D *simul_multithread(DoubleMatrix2D *matrix) {
 			free(slaves);
 			free(slave_args);
 
-			exit(1);
+			return NULL;
 		}
 
 		/* Enviar matriz-raíz linha-a-linha */
@@ -172,7 +172,7 @@ DoubleMatrix2D *simul_multithread(DoubleMatrix2D *matrix) {
 			free(slaves);
 			free(slave_args);
 
-			exit(1);
+			return NULL;
 		}
 	}
 
@@ -206,6 +206,14 @@ void *slave_thread(void *arg) {
 	DoubleMatrix2D *mini_matrix = dm2dNew(k+2, N+2);
 	DoubleMatrix2D *result = NULL;
 
+	if (is_arg_null(receive_slice, "receive_slice (thread)")) {
+		return NULL;
+	}
+	if (is_arg_null(mini_matrix, "mini_matrix (thread)")) {
+		free(receive_slice);
+		return NULL;
+	}
+
 	/* Receber a matriz linha a linha */
 	for (int i = 0; i < k+2; i++) {
 		receberMensagem(0, id, receive_slice, buffer_size);
@@ -214,6 +222,11 @@ void *slave_thread(void *arg) {
 
 	/* Fazer cálculos */
 	result = simul(mini_matrix, k+2, N+2, iter, id);
+	if (is_arg_null(result, "result (thread)")) {
+		free(receive_slice);
+		dm2dFree(mini_matrix);
+		return NULL;
+	}
 
 	/* Enviar matrix calculada linha a linha */
 	for (int i = 1; i < k+1; i++) {
@@ -265,7 +278,7 @@ void is_arg_greater_equal_to(int value, int greater, const char *name) {
 int is_arg_null(void *arg, const char *name) {
 	if (arg == NULL) {
 		fprintf(stderr, "\nErro ao alocar memória para \"%s\"\n\n", name);
-		return -1;
+		return 1;
 	}
 	return 0;
 }
@@ -337,7 +350,9 @@ int main(int argc, char *argv[]) {
 
 	/* Criar matrizes */
 	DoubleMatrix2D *matrix = dm2dNew(N+2, N+2);
-	is_arg_null(matrix, "matrix");
+	if (is_arg_null(matrix, "matrix")) {
+		return -1;
+	}
 
 	/* Preenchendo a nossa matriz de acordo com os argumentos */
 	dm2dSetLineTo(matrix, 0, t.sup);
@@ -360,6 +375,11 @@ int main(int argc, char *argv[]) {
 	} else {
 		result = simul(matrix, N+2, N+2, iter, 0);
 	}
+
+	if (is_arg_null(result, "result")) {
+		return -1;
+	}
+
 	/* Mostramos o resultado */
 	dm2dPrint(result);
 
