@@ -13,9 +13,9 @@
 | Function: dm2dNew
 ---------------------------------------------------------------------*/
 
-DoubleMatrix2D* dm2dNew(int lines, int columns) {
+DoubleMatrix2D *dm2dNew(int lines, int columns) {
 	int i, j;
-	DoubleMatrix2D* matrix = malloc(sizeof(DoubleMatrix2D));
+	DoubleMatrix2D *matrix = malloc(sizeof(*matrix));
 
 	if (matrix == NULL) {
 		return NULL;
@@ -23,9 +23,9 @@ DoubleMatrix2D* dm2dNew(int lines, int columns) {
 
 	matrix->n_l = lines;
 	matrix->n_c = columns;
-	matrix->data = (double*) malloc(sizeof(double)*lines*columns);
+	matrix->data = malloc(lines*columns * sizeof(*matrix->data));
 	if (matrix->data == NULL) {
-		free (matrix);
+		free(matrix);
 		return NULL;
 	}
 

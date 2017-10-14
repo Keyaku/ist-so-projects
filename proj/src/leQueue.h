@@ -99,8 +99,8 @@ typedef struct QueHead
 |   Macros
 --------------------------------------------------------------------*/
 
-#define leQueNewHead()  ((QueHead*) malloc (SzQueHead))
-#define leQueNewElem()  ((QueElem*) malloc (SzQueElem))
+#define leQueNewHead()  (malloc (SzQueHead))
+#define leQueNewElem()  (malloc (SzQueElem))
 
 #define leQueFreeHead(qh_p)  free (qh_p)
 #define leQueFreeElem(qe_p)  free (qe_p)
