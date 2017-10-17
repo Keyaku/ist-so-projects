@@ -7,11 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-
 #include <pthread.h>
-#include <fcntl.h>
-#include <semaphore.h>
 
 #include "mplib3.h"
 #include "leQueue.h"
@@ -39,12 +35,9 @@ typedef struct channel_t {
 int                channel_capacity;
 int                number_of_tasks;
 Channel_t          **channel_array;
-pthread_mutex_t    mutex_receive;
-pthread_mutex_t    mutex_send;
+pthread_mutex_t    single_mutex;
 pthread_cond_t     wait_for_free_space;
 pthread_cond_t     wait_for_messages;
-sem_t              *can_receive;
-sem_t              *can_send;
 
 
 /*--------------------------------------------------------------------
@@ -93,39 +86,18 @@ int inicializarMPlib(int capacidade_de_cada_canal, int ntasks) {
 		return -1;
 	}
 
-	/* Inicializar trincos */
-	if (pthread_mutex_init(&mutex_send, NULL)) {
-		fprintf(stderr, "\nErro ao inicializar mutex\n");
-		return -1;
-	}
-	if (pthread_mutex_init(&mutex_receive, NULL)) {
+	if (pthread_mutex_init(&single_mutex, NULL) != 0) {
 		fprintf(stderr, "\nErro ao inicializar mutex\n");
 		return -1;
 	}
 
-	/* Inicializar condições */
-	if (pthread_cond_init(&wait_for_free_space, NULL)) {
+	if (pthread_cond_init(&wait_for_free_space, NULL) != 0) {
 		fprintf(stderr, "\nErro ao inicializar variável de condição\n");
 		return -1;
 	}
 
-	if (pthread_cond_init(&wait_for_messages, NULL)) {
+	if (pthread_cond_init(&wait_for_messages, NULL) != 0) {
 		fprintf(stderr, "\nErro ao inicializar variável de condição\n");
-		return -1;
-	}
-
-	/* Inicializar semáforos */
-	sem_unlink("can_send");
-	can_send = sem_open("can_send", O_CREAT, 0644, ntasks);
-	if (can_send == SEM_FAILED) {
-		fprintf(stderr, "\nErro ao inicializar semáforo: %d\n", errno);
-		return -1;
-	}
-
-	sem_unlink("can_receive");
-	can_receive = sem_open("can_receive", O_CREAT, 0644, 0);
-	if (can_receive == SEM_FAILED) {
-		fprintf(stderr, "\nErro ao inicializar semáforo: %d\n", errno);
 		return -1;
 	}
 
@@ -151,35 +123,18 @@ int inicializarMPlib(int capacidade_de_cada_canal, int ntasks) {
 void libertarMPlib() {
 	int i,j;
 
-	/* Limpar trincos */
-	if (pthread_mutex_destroy(&mutex_send)) {
-		fprintf(stderr, "\nErro ao destruir mutex\n");
-		exit(EXIT_FAILURE);
-	}
-	if (pthread_mutex_destroy(&mutex_receive)) {
+	if (pthread_mutex_destroy(&single_mutex) != 0) {
 		fprintf(stderr, "\nErro ao destruir mutex\n");
 		exit(EXIT_FAILURE);
 	}
 
-	/* Limpar condições */
-	if (pthread_cond_destroy(&wait_for_free_space)) {
+	if (pthread_cond_destroy(&wait_for_free_space) != 0) {
 		fprintf(stderr, "\nErro ao destruir variável de condição\n");
 		exit(EXIT_FAILURE);
 	}
 
-	if (pthread_cond_destroy(&wait_for_messages)) {
+	if (pthread_cond_destroy(&wait_for_messages) != 0) {
 		fprintf(stderr, "\nErro ao destruir variável de condição\n");
-		exit(EXIT_FAILURE);
-	}
-
-	/* Limpar semáforos */
-	if (sem_close(can_send)) {
-		fprintf(stderr, "\nErro ao destruir semáforo\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (sem_close(can_receive)) {
-		fprintf(stderr, "\nErro ao destruir semáforo\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -220,11 +175,7 @@ int receberMensagem(int tarefaOrig, int tarefaDest, void *buffer, int tamanho) {
 	Message_t *mess;
 	int       copysize;
 
-	if (sem_wait(can_receive)) {
-		fprintf(stderr, "\nErro ao esperar o semáforo \"can_receive\"\n");
-		return -1;
-	}
-	if (pthread_mutex_lock(&mutex_receive)) {
+	if (pthread_mutex_lock(&single_mutex) != 0) {
 		fprintf(stderr, "\nErro ao bloquear mutex\n");
 		return -1;
 	}
@@ -233,7 +184,7 @@ int receberMensagem(int tarefaOrig, int tarefaDest, void *buffer, int tamanho) {
 	mess    = (Message_t*) leQueRemFirst(channel->message_list);
 
 	while (!mess) {
-		if (pthread_cond_wait(&wait_for_messages, &mutex_receive)) {
+		if (pthread_cond_wait(&wait_for_messages, &single_mutex) != 0) {
 			fprintf(stderr, "\nErro ao esperar pela variável de condição\n");
 			return -1;
 		}
@@ -249,17 +200,13 @@ int receberMensagem(int tarefaOrig, int tarefaDest, void *buffer, int tamanho) {
 		mess->consumed = 1;
 	}
 
-	if (pthread_cond_broadcast(&wait_for_free_space)) {
+	if (pthread_cond_broadcast(&wait_for_free_space) != 0) {
 		fprintf(stderr, "\nErro ao desbloquear variável de condição\n");
 		return -1;
 	}
 
-	if (pthread_mutex_unlock(&mutex_receive)) {
+	if (pthread_mutex_unlock(&single_mutex) != 0) {
 		fprintf(stderr, "\nErro ao desbloquear mutex\n");
-		return -1;
-	}
-	if (sem_post(can_send)) {
-		fprintf(stderr, "\nErro ao assinalar o semáforo \"can_send\"\n");
 		return -1;
 	}
 
@@ -308,11 +255,7 @@ int enviarMensagem(int tarefaOrig, int tarefaDest, void *msg, int tamanho) {
 		mess->consumed = 0;
 	}
 
-	if (sem_wait(can_send)) {
-		fprintf(stderr, "\nErro ao esperar o semáforo \"can_send\"\n");
-		return -1;
-	}
-	if (pthread_mutex_lock(&mutex_send)) {
+	if (pthread_mutex_lock(&single_mutex) != 0) {
 		fprintf(stderr, "\nErro ao bloquear mutex\n");
 		return -1;
 	}
@@ -322,7 +265,7 @@ int enviarMensagem(int tarefaOrig, int tarefaDest, void *msg, int tamanho) {
 	/* if channels are buffered, wait until there is buffer available */
 	if (channel_capacity >0) {
 		while (leQueSize(channel->message_list) >= channel_capacity) {
-			if (pthread_cond_wait(&wait_for_free_space, &mutex_send)) {
+			if (pthread_cond_wait(&wait_for_free_space, &single_mutex) != 0) {
 				fprintf(stderr, "\nErro ao esperar pela variável de condição\n");
 				return -1;
 			}
@@ -335,7 +278,7 @@ int enviarMensagem(int tarefaOrig, int tarefaDest, void *msg, int tamanho) {
 	/* if channels are not buffered, wait for message to be read */
 	if (channel_capacity==0) {
 		while (mess->consumed==0) {
-			if (pthread_cond_wait(&wait_for_free_space, &mutex_send)) {
+			if (pthread_cond_wait(&wait_for_free_space, &single_mutex) != 0) {
 				fprintf(stderr, "\nErro ao esperar pela variável de condição\n");
 				return -1;
 			}
@@ -343,12 +286,8 @@ int enviarMensagem(int tarefaOrig, int tarefaDest, void *msg, int tamanho) {
 		free(mess);
 	}
 
-	if (pthread_mutex_unlock(&mutex_send)) {
+	if (pthread_mutex_unlock(&single_mutex) != 0) {
 		fprintf(stderr, "\nErro ao desbloquear mutex\n");
-		return -1;
-	}
-	if (sem_post(can_receive)) {
-		fprintf(stderr, "\nErro ao assinalar o semáforo \"can_receive\"\n");
 		return -1;
 	}
 
