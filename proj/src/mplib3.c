@@ -207,7 +207,7 @@ int receberMensagem(int tarefaOrig, int tarefaDest, void *buffer, int tamanho) {
 		mess->consumed = 1;
 	}
 
-	if (pthread_cond_broadcast(&channel->wait_for_free_space) != 0) {
+	if (pthread_cond_signal(&channel->wait_for_free_space) != 0) {
 		fprintf(stderr, "\nErro ao desbloquear variável de condição\n");
 		return -1;
 	}
@@ -280,7 +280,7 @@ int enviarMensagem(int tarefaOrig, int tarefaDest, void *msg, int tamanho) {
 	}
 
 	leQueInsLast (channel->message_list, mess);
-	pthread_cond_broadcast(&channel->wait_for_messages);
+	pthread_cond_signal(&channel->wait_for_messages);
 
 	/* if channels are not buffered, wait for message to be read */
 	if (channel_capacity==0) {
