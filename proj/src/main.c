@@ -168,11 +168,8 @@ DoubleMatrix2D *simul_multithread(DoubleMatrix2D *matrix) {
 		if (pthread_join(slaves[idx], NULL)) {
 			fprintf(stderr, "\nErro ao esperar por um escravo.\n");
 
-			free(receive_slice);
-			free(slaves);
-			free(slave_args);
-
-			return NULL;
+			result = NULL;
+			break;
 		}
 	}
 
