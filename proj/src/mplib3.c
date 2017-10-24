@@ -36,9 +36,9 @@ typedef struct channel_t {
 /*--------------------------------------------------------------------
 | Global Variables
 ---------------------------------------------------------------------*/
-int                channel_capacity;
-int                number_of_tasks;
-Channel_t          **channel_array;
+int             channel_capacity;
+int             number_of_tasks;
+Channel_t       **channel_array;
 
 
 /*--------------------------------------------------------------------
@@ -83,6 +83,37 @@ Channel_t *createChannel() {
 	return channel;
 }
 
+void destroyChannel(Channel_t *channel) {
+	Message_t *mess = (Message_t*) leQueRemFirst(channel->message_list);
+
+	while (mess) {
+		if (channel_capacity>0) {
+			free(mess->contents);
+		}
+		free(mess);
+		mess = (Message_t*) leQueRemFirst(channel->message_list);
+	}
+
+	/* delete message list header for this channel */
+	leQueFreeHead(channel->message_list);
+
+	/* destroying mutex and conditions */
+	if (pthread_mutex_destroy(&channel->mutex) != 0) {
+		fprintf(stderr, "\nErro ao destruir mutex\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (pthread_cond_destroy(&channel->wait_for_free_space) != 0) {
+		fprintf(stderr, "\nErro ao destruir variável de condição\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (pthread_cond_destroy(&channel->wait_for_messages) != 0) {
+		fprintf(stderr, "\nErro ao destruir variável de condição\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 
 /*--------------------------------------------------------------------
 | Function: inicializarMPlib
@@ -93,8 +124,6 @@ Channel_t *createChannel() {
 ---------------------------------------------------------------------*/
 int inicializarMPlib(int capacidade_de_cada_canal, int ntasks) {
 	int i, j;
-	Channel_t *channel;
-
 
 	number_of_tasks  = ntasks;
 	channel_capacity = capacidade_de_cada_canal;
@@ -107,7 +136,7 @@ int inicializarMPlib(int capacidade_de_cada_canal, int ntasks) {
 
 	for (i=0; i<ntasks; i++) {
 		for (j=0; j<ntasks; j++) {
-			channel = createChannel();
+			Channel_t *channel = createChannel();
 			if (channel == NULL) {
 				return -1;
 			}
@@ -130,35 +159,7 @@ void libertarMPlib() {
 	for (i=0; i<number_of_tasks; i++) {
 		for (j=0; j<number_of_tasks; j++) {
 			Channel_t *channel = channel_array[i*number_of_tasks+j];
-			Message_t *mess    = (Message_t*) leQueRemFirst(channel->message_list);
-
-			while (mess) {
-				if (channel_capacity>0) {
-					free(mess->contents);
-				}
-				free(mess);
-				mess = (Message_t*) leQueRemFirst(channel->message_list);
-			}
-
-			/* delete message list header for this channel */
-			leQueFreeHead(channel->message_list);
-
-			/* destroying mutex and conditions */
-			if (pthread_mutex_destroy(&channel->mutex) != 0) {
-				fprintf(stderr, "\nErro ao destruir mutex\n");
-				exit(EXIT_FAILURE);
-			}
-
-			if (pthread_cond_destroy(&channel->wait_for_free_space) != 0) {
-				fprintf(stderr, "\nErro ao destruir variável de condição\n");
-				exit(EXIT_FAILURE);
-			}
-
-			if (pthread_cond_destroy(&channel->wait_for_messages) != 0) {
-				fprintf(stderr, "\nErro ao destruir variável de condição\n");
-				exit(EXIT_FAILURE);
-			}
-
+			destroyChannel(channel);
 			free(channel);
 		}
 	}
