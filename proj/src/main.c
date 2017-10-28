@@ -25,7 +25,7 @@ static int N;    /* Tamanho de linhas/colunas */
 static int k;    /* Número de linhas a processar por tarefa trabalhadora */
 static int iter; /* Número de iterações a processar */
 static int trab; /* Número de trabalhadoras a lançar */
-static int maxD; /* Lumiar de travagem */
+static double maxD; /* Limiar de travagem */
 
 /*--------------------------------------------------------------------
 | Helper functions
@@ -323,7 +323,6 @@ int main(int argc, char *argv[]) {
 	/* argv[0] = program name */
 	N       = parse_integer_or_exit(argv[1], "N");
 	iter    = parse_integer_or_exit(argv[6], "iter");
-	maxD    = parse_integer_or_exit(argv[7], "iter");
 	trab    = 1;
 	int csz = 0;
 	if (9 <= argc && argc <= 10) {
@@ -336,6 +335,7 @@ int main(int argc, char *argv[]) {
 	t.sup = parse_double_or_exit(argv[3], "tSup");
 	t.dir = parse_double_or_exit(argv[4], "tDir");
 	t.inf = parse_double_or_exit(argv[5], "tInf");
+	maxD  = parse_double_or_exit(argv[7], "maxD");
 
 	fprintf(stderr, "\nArgumentos:\n"
 		"    N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d maxD=%d trab=%d csz=%d\n",
