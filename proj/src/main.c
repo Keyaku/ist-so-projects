@@ -338,7 +338,7 @@ int main(int argc, char *argv[]) {
 	maxD  = parse_double_or_exit(argv[7], "maxD");
 
 	fprintf(stderr, "\nArgumentos:\n"
-		"    N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d maxD=%d trab=%d csz=%d\n",
+		"    N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d maxD=%1.f trab=%d csz=%d\n",
 		N, t.esq, t.sup, t.dir, t.inf, iter, maxD, trab, csz
 	);
 
