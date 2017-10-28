@@ -25,9 +25,10 @@ static int N;    /* Tamanho de linhas/colunas */
 static int k;    /* Número de linhas a processar por tarefa trabalhadora */
 static int iter; /* Número de iterações a processar */
 static int trab; /* Número de trabalhadoras a lançar */
+static int maxD; /* Lumiar de travagem */
 
 /*--------------------------------------------------------------------
-| Function: average
+| Helper functions
 ---------------------------------------------------------------------*/
 double average(double *array, size_t size) {
 	double result = 0;
@@ -38,6 +39,8 @@ double average(double *array, size_t size) {
 
 	return result / size;
 }
+
+#define max(a, b) a < b ? b : a
 
 /*--------------------------------------------------------------------
 | Function: simul
@@ -54,6 +57,10 @@ DoubleMatrix2D *simul(
 	double *receive_slice = malloc(buffer_size);
 	int is_slave = linhas != colunas;
 
+	/* Diferencial para o lumiar de travagem */
+	double d = 0;
+	int is_done = 0;
+
 	/* Criando uma matriz auxiliar */
 	DoubleMatrix2D *matrix_aux = dm2dNew(linhas, colunas);
 
@@ -68,7 +75,7 @@ DoubleMatrix2D *simul(
 
 	dm2dCopy(matrix_aux, matrix);
 
-	while (it-- > 0) {
+	while (it-- > 0 && !is_done) {
 		/* Processamos uma iteração */
 		for (int i = 1; i < linhas-1; i++) {
 			for (int j = 1; j < colunas-1; j++) {
@@ -82,6 +89,14 @@ DoubleMatrix2D *simul(
 				dm2dSetEntry(matrix_aux, i, j, value);
 			}
 		}
+
+		/* Verificamos se maxD foi atingido */
+		d = 0;
+		for (int j = 1; j < colunas-1; j++) {
+			double diff = dm2dGetEntry(matrix_aux, 1, j) - dm2dGetEntry(matrix, 1, j);
+			d = max(d, diff);
+		}
+		is_done = d < maxD;
 
 		/* Switching pointers between matrices, avoids boilerplate code */
 		matrix_temp = matrix;
@@ -101,6 +116,11 @@ DoubleMatrix2D *simul(
 				dm2dSetLine(matrix, linhas-1, receive_slice);
 			}
 		}
+	}
+
+	/* Se houve uma confusão de pointers, resolvemos o de matrix_aux */
+	if (result != matrix) {
+		matrix_aux = matrix;
 	}
 
 	free(receive_slice);
@@ -291,9 +311,9 @@ int is_arg_null(void *arg, const char *name) {
 |
 ---------------------------------------------------------------------*/
 int main(int argc, char *argv[]) {
-	if (argc != 7 && argc != 9) {
+	if (argc != 8 && argc != 10) {
 		fprintf(stderr, "\nNumero invalido de argumentos.\n");
-		fprintf(stderr, "Uso: heatSim N tEsq tSup tDir tInf iter trab csz\n\n");
+		fprintf(stderr, "Uso: heatSim N tEsq tSup tDir tInf iter maxD (trab csz)\n\n");
 		return 1;
 	}
 
@@ -303,11 +323,12 @@ int main(int argc, char *argv[]) {
 	/* argv[0] = program name */
 	N       = parse_integer_or_exit(argv[1], "N");
 	iter    = parse_integer_or_exit(argv[6], "iter");
+	maxD    = parse_integer_or_exit(argv[7], "iter");
 	trab    = 1;
 	int csz = 0;
-	if (8 <= argc && argc <= 9) {
-		trab = parse_integer_or_exit(argv[7], "trab");
-		csz  = parse_integer_or_exit(argv[8], "csz");
+	if (9 <= argc && argc <= 10) {
+		trab = parse_integer_or_exit(argv[8], "trab");
+		csz  = parse_integer_or_exit(argv[9], "csz");
 	}
 
 	struct { double esq, sup, dir, inf; } t;
@@ -317,8 +338,8 @@ int main(int argc, char *argv[]) {
 	t.inf = parse_double_or_exit(argv[5], "tInf");
 
 	fprintf(stderr, "\nArgumentos:\n"
-		"    N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d\n",
-		N, t.esq, t.sup, t.dir, t.inf, iter, trab, csz
+		"    N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d maxD=%d trab=%d csz=%d\n",
+		N, t.esq, t.sup, t.dir, t.inf, iter, maxD, trab, csz
 	);
 
 	/* VERIFICAR SE ARGUMENTOS ESTÃO CONFORME O ENUNCIADO */
@@ -332,6 +353,7 @@ int main(int argc, char *argv[]) {
 		{ t.dir, 0, "tDir" },
 		{ t.inf, 0, "tInf" },
 		{ iter,  1, "iter" },
+		{ maxD,  1, "maxD" },
 		{ trab,  1, "trab" },
 		{ csz,   0, "csz"  }
 	};
