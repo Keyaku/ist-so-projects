@@ -131,10 +131,10 @@ void *slave_thread(void *arg) {
 	/* Fazer cálculos */
 	DoubleMatrix2D *result = simul(first, k+2, N+2, iter, id, maxD);
 	if (is_arg_null(result, "result (thread)")) {
-		return 1;
+		return NULL;
 	}
 
-	return 0;
+	return result;
 }
 
 /*--------------------------------------------------------------------
@@ -299,7 +299,7 @@ int main(int argc, char *argv[]) {
 		/* Verificando se o fio de execução foi correctamente criado */
 		if (pthread_create(&slaves[idx], NULL, slave_thread, &slave_args[idx])) {
 			fprintf(stderr, "\nErro ao criar um escravo\n");
-			return -1;
+			return EXIT_FAILURE;
 		}
 	}
 
@@ -307,16 +307,16 @@ int main(int argc, char *argv[]) {
 	for (idx = 0; idx < trab; idx++) {
 		if (pthread_join(slaves[idx], NULL)) {
 			fprintf(stderr, "\nErro ao esperar por um escravo.\n");
-			return -1;
+			return EXIT_FAILURE;
 		}
 	}
 
-	if (!is_arg_null(result, "result")) {
-		/* Mostramos o resultado */
-		dm2dPrint(result);
-	} else {
-		retval = -1;
+	if (is_arg_null(result, "result")) {
+		return EXIT_FAILURE;
 	}
+
+	/* Mostramos o resultado */
+	dm2dPrint(result);
 
 	/* Limpar estruturas */
 	free(slaves);
