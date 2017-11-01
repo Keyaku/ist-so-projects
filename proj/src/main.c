@@ -17,19 +17,18 @@ int is_arg_null(void *arg, const char *name);
 /* Material de tarefas */
 typedef struct simul_args_t {
 	int id, first;
+	int N;       /* Tamanho de linhas/colunas */
+	int k;       /* Número de linhas a processar por tarefa trabalhadora */
+	int iter;    /* Número de iterações a processar */
+	double maxD; /* Limiar de travagem */
+
 } simul_args_t;
 void *slave_thread(void *arg);
 
 /* Material de concorrência */
-pthread_mutex_t mutex;
+// TODO
 
 /* Variáveis globais */
-static int N;    /* Tamanho de linhas/colunas */
-static int k;    /* Número de linhas a processar por tarefa trabalhadora */
-static int iter; /* Número de iterações a processar */
-static int trab; /* Número de trabalhadoras a lançar */
-static double maxD; /* Limiar de travagem */
-
 DoubleMatrix2D *matrix, *matrix_aux; /* As nossas duas matrizes */
 
 /*--------------------------------------------------------------------
@@ -56,7 +55,8 @@ DoubleMatrix2D *simul(
 	int linhas,
 	int colunas,
 	int it,
-	int id
+	int id,
+	double maxD
 ) {
 	DoubleMatrix2D *result = matrix;
 	DoubleMatrix2D *matrix_temp = NULL;
@@ -103,7 +103,13 @@ DoubleMatrix2D *simul(
 	return result;
 }
 
-DoubleMatrix2D *simul_multithread() {
+DoubleMatrix2D *simul_multithread(
+	int N,
+	int k,
+	int iter,
+	int trab,
+	double maxD
+) {
 	DoubleMatrix2D *result = matrix;
 	size_t idx;
 	int linha = 0;
@@ -123,7 +129,9 @@ DoubleMatrix2D *simul_multithread() {
 	/* Primeiro set de iterações */
 	for (idx = 0; idx < trab; idx++, linha += k) {
 		slave_args[idx].id = idx+1;
-		slave_args[idx].first = linha;
+		slave_args[idx].N = N;
+		slave_args[idx].k = k;
+		slave_args[idx].iter = iter;
 
 		/* Verificando se o fio de execução foi correctamente criado */
 		if (pthread_create(&slaves[idx], NULL, slave_thread, &slave_args[idx])) {
@@ -167,11 +175,15 @@ DoubleMatrix2D *simul_multithread() {
 ---------------------------------------------------------------------*/
 void *slave_thread(void *arg) {
 	simul_args_t *simul_arg = (simul_args_t*) arg;
-	int id    = simul_arg->id;
-	int first = simul_arg->first;
+	int id      = simul_arg->id;
+	int first   = simul_arg->first;
+	int N       = simul_arg->N;
+	int k       = simul_arg->k;
+	int iter    = simul_arg->iter;
+	double maxD = simul_arg->maxD;
 
 	/* Fazer cálculos */
-	DoubleMatrix2D *result = simul(first, k+2, N+2, iter, id);
+	DoubleMatrix2D *result = simul(first, k+2, N+2, iter, id, maxD);
 	if (is_arg_null(result, "result (thread)")) {
 		return NULL;
 	}
@@ -245,15 +257,16 @@ int main(int argc, char *argv[]) {
 	int retval = 0;
 
 	/* argv[0] = program name */
-	N       = parse_integer_or_exit(argv[1], "N");
-	iter    = parse_integer_or_exit(argv[6], "iter");
-	trab    = 1;
-	int csz = 0;
+	int N    = parse_integer_or_exit(argv[1], "N");
+	int iter = parse_integer_or_exit(argv[6], "iter");
+	int trab = 1;
+	int csz  = 0;
 	if (9 <= argc && argc <= 10) {
 		trab = parse_integer_or_exit(argv[8], "trab");
 		csz  = parse_integer_or_exit(argv[9], "csz");
 	}
 
+	double maxD;
 	struct { double esq, sup, dir, inf; } t;
 	t.esq = parse_double_or_exit(argv[2], "tEsq");
 	t.sup = parse_double_or_exit(argv[3], "tSup");
@@ -262,7 +275,7 @@ int main(int argc, char *argv[]) {
 	maxD  = parse_double_or_exit(argv[7], "maxD");
 
 	fprintf(stderr, "\nArgumentos:\n"
-		"    N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d maxD=%1.f trab=%d csz=%d\n",
+		"    N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d maxD=%.1f trab=%d csz=%d\n",
 		N, t.esq, t.sup, t.dir, t.inf, iter, maxD, trab, csz
 	);
 
@@ -285,7 +298,7 @@ int main(int argc, char *argv[]) {
 		is_arg_greater_equal_to(arg_checker[idx].arg, arg_checker[idx].val, arg_checker[idx].name);
 	}
 
-	k = N/trab;
+	int k = N/trab;
 	if ((double) k != (double) N/trab) {
 		fprintf(stderr, "\ntrab não é um múltiplo de N\n");
 		return -1;
@@ -312,9 +325,10 @@ int main(int argc, char *argv[]) {
 	/* Lancemos a simulação */
 	DoubleMatrix2D *result;
 	if (trab > 1) {
-		result = simul_multithread();
+		result = simul_multithread(N, k, iter, trab, maxD);
 	} else {
-		result = simul(0, N+2, N+2, iter, 0);
+		// simul(first, linhas, colunas, iter, id, maxD)
+		result = simul(0, N+2, N+2, iter, 0, maxD);
 	}
 
 	if (!is_arg_null(result, "result")) {
