@@ -219,7 +219,7 @@ int main(int argc, char *argv[]) {
 	t.dir = parse_double_or_exit(argv[4], "tDir");
 	t.inf = parse_double_or_exit(argv[5], "tInf");
 	if (10 <= argc) {
-		maxD = parse_double_or_exit(argv[7], "maxD");
+		maxD = parse_double_or_exit(argv[9], "maxD");
 	}
 
 	fprintf(stderr, "\nArgumentos:\n"
