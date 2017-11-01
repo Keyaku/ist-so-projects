@@ -12,7 +12,7 @@ ifneq ($(shell uname), Darwin)
 	LDFLAGS = -pthread
 endif
 
-ZIPFILE = ex2-g48.zip
+ZIPFILE = ex3-g48.zip
 EXECFILE ?= heatSim
 
 ################################################################################
