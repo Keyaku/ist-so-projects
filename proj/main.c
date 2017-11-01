@@ -199,9 +199,6 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	// Auxiliary variables
-	int retval = 0;
-
 	/* argv[0] = program name */
 	int N    = parse_integer_or_exit(argv[1], "N");
 	int iter = parse_integer_or_exit(argv[6], "iter");
@@ -324,5 +321,5 @@ int main(int argc, char *argv[]) {
 	dm2dFree(matrix);
 	dm2dFree(matrix_aux);
 
-	return retval;
+	return EXIT_SUCCESS;
 }
