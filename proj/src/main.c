@@ -81,12 +81,14 @@ DoubleMatrix2D *simul(
 		}
 
 		/* Verificamos se maxD foi atingido */
-		d = 0;
-		for (int j = 1; j < colunas-1; j++) {
-			double diff = dm2dGetEntry(matrix_aux, first+1, j) - dm2dGetEntry(matrix, first+1, j);
-			d = max(d, diff);
+		if (maxD != 0) {
+			d = 0;
+			for (int j = 1; j < colunas-1; j++) {
+				double diff = dm2dGetEntry(matrix_aux, first+1, j) - dm2dGetEntry(matrix, first+1, j);
+				d = max(d, diff);
+			}
+			is_done = d < maxD;
 		}
-		is_done = d < maxD;
 
 		/* Switching pointers between matrices, avoids boilerplate code */
 		matrix_temp = matrix;
@@ -116,12 +118,12 @@ DoubleMatrix2D *simul_multithread(
 
 	/* Inicializar tarefas uma a uma */
 	pthread_t *slaves = malloc(trab * sizeof(*slaves));
-	if (is_arg_null(slaves, "slaves")) {
+	if (is_arg_null(slaves, "Erro ao alocar memória para escravos.")) {
 		return NULL;
 	}
 
 	simul_args_t *slave_args = malloc(trab * sizeof(*slave_args));
-	if (is_arg_null(slave_args, "slave_args")) {
+	if (is_arg_null(slave_args, "Erro ao alocar memória para escravos.")) {
 		free(slaves);
 		return NULL;
 	}
@@ -228,9 +230,9 @@ void is_arg_greater_equal_to(int value, int greater, const char *name) {
 	}
 }
 
-int is_arg_null(void *arg, const char *name) {
+int is_arg_null(void *arg, const char *msg) {
 	if (arg == NULL) {
-		fprintf(stderr, "\nErro ao alocar memória para \"%s\"\n\n", name);
+		fprintf(stderr, "\n%s\n", msg);
 		return 1;
 	}
 	return 0;
@@ -275,7 +277,7 @@ int main(int argc, char *argv[]) {
 	maxD  = parse_double_or_exit(argv[7], "maxD");
 
 	fprintf(stderr, "\nArgumentos:\n"
-		"    N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d maxD=%.1f trab=%d csz=%d\n",
+		" N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d maxD=%.1f",
 		N, t.esq, t.sup, t.dir, t.inf, iter, maxD, trab, csz
 	);
 
@@ -300,17 +302,19 @@ int main(int argc, char *argv[]) {
 
 	int k = N/trab;
 	if ((double) k != (double) N/trab) {
-		fprintf(stderr, "\ntrab não é um múltiplo de N\n");
+		fprintf(stderr, "\nErro: Argumento %s e %s invalidos\n"
+			"%s deve ser multiplo de %s.", "N", "trab", "N", "trab"
+		);
 		return -1;
 	}
 
 	/* Criar matrizes */
 	matrix = dm2dNew(N+2, N+2);
-	if (is_arg_null(matrix, "matrix")) {
+	if (is_arg_null(matrix, "Erro ao criar Matrix2d.")) {
 		return -1;
 	}
 	matrix_aux = dm2dNew(N+2, N+2);
-	if (is_arg_null(matrix_aux, "matrix")) {
+	if (is_arg_null(matrix_aux, "Erro ao criar Matrix2d.")) {
 		dm2dFree(matrix);
 		return -1;
 	}
