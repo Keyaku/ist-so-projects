@@ -105,62 +105,6 @@ DoubleMatrix2D *simul(
 	return result;
 }
 
-DoubleMatrix2D *simul_multithread(
-	int N,
-	int k,
-	int iter,
-	int trab,
-	double maxD
-) {
-	DoubleMatrix2D *result = matrix;
-	size_t idx;
-	int linha = 0;
-
-	/* Inicializar tarefas uma a uma */
-	pthread_t *slaves = malloc(trab * sizeof(*slaves));
-	if (is_arg_null(slaves, "Erro ao alocar memória para escravos.")) {
-		return NULL;
-	}
-
-	simul_args_t *slave_args = malloc(trab * sizeof(*slave_args));
-	if (is_arg_null(slave_args, "Erro ao alocar memória para escravos.")) {
-		free(slaves);
-		return NULL;
-	}
-
-	/* Primeiro set de iterações */
-	for (idx = 0; idx < trab; idx++, linha += k) {
-		slave_args[idx].id = idx+1;
-		slave_args[idx].N = N;
-		slave_args[idx].k = k;
-		slave_args[idx].iter = iter;
-
-		/* Verificando se o fio de execução foi correctamente criado */
-		if (pthread_create(&slaves[idx], NULL, slave_thread, &slave_args[idx])) {
-			fprintf(stderr, "\nErro ao criar um escravo\n");
-
-			free(slaves);
-			free(slave_args);
-			return NULL;
-		}
-	}
-
-	/* "Juntar" tarefas trabalhadoras */
-	for (idx = 0; idx < trab; idx++) {
-		if (pthread_join(slaves[idx], NULL)) {
-			fprintf(stderr, "\nErro ao esperar por um escravo.\n");
-			result = NULL;
-			break;
-		}
-	}
-
-	/* Limpar estruturas */
-	free(slaves);
-	free(slave_args);
-
-	return result;
-}
-
 /*--------------------------------------------------------------------
 | Function: "escrava"
 |
@@ -187,7 +131,7 @@ void *slave_thread(void *arg) {
 	/* Fazer cálculos */
 	DoubleMatrix2D *result = simul(first, k+2, N+2, iter, id, maxD);
 	if (is_arg_null(result, "result (thread)")) {
-		return NULL;
+		return 1;
 	}
 
 	return 0;
@@ -329,12 +273,42 @@ int main(int argc, char *argv[]) {
 	dm2dCopy(matrix_aux, matrix);
 
 	/* Lancemos a simulação */
-	DoubleMatrix2D *result;
-	if (trab > 1) {
-		result = simul_multithread(N, k, iter, trab, maxD);
-	} else {
-		// simul(first, linhas, colunas, iter, id, maxD)
-		result = simul(0, N+2, N+2, iter, 0, maxD);
+	DoubleMatrix2D *result = matrix;
+	size_t idx;
+	int linha = 0;
+
+	/* Inicializar tarefas uma a uma */
+	pthread_t *slaves = malloc(trab * sizeof(*slaves));
+	if (is_arg_null(slaves, "Erro ao alocar memória para escravos.")) {
+		return -1;
+	}
+
+	simul_args_t *slave_args = malloc(trab * sizeof(*slave_args));
+	if (is_arg_null(slave_args, "Erro ao alocar memória para escravos.")) {
+		return -1;
+	}
+
+	/* Primeiro set de iterações */
+	for (idx = 0; idx < trab; idx++, linha += k) {
+		slave_args[idx].id = idx+1;
+		slave_args[idx].first = linha;
+		slave_args[idx].N = N;
+		slave_args[idx].k = k;
+		slave_args[idx].iter = iter;
+
+		/* Verificando se o fio de execução foi correctamente criado */
+		if (pthread_create(&slaves[idx], NULL, slave_thread, &slave_args[idx])) {
+			fprintf(stderr, "\nErro ao criar um escravo\n");
+			return -1;
+		}
+	}
+
+	/* "Juntar" tarefas trabalhadoras */
+	for (idx = 0; idx < trab; idx++) {
+		if (pthread_join(slaves[idx], NULL)) {
+			fprintf(stderr, "\nErro ao esperar por um escravo.\n");
+			return -1;
+		}
 	}
 
 	if (!is_arg_null(result, "result")) {
@@ -344,7 +318,11 @@ int main(int argc, char *argv[]) {
 		retval = -1;
 	}
 
+	/* Limpar estruturas */
+	free(slaves);
+	free(slave_args);
 	dm2dFree(matrix);
 	dm2dFree(matrix_aux);
+
 	return retval;
 }
