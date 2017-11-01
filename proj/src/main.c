@@ -249,9 +249,9 @@ int is_arg_null(void *arg, const char *msg) {
 |
 ---------------------------------------------------------------------*/
 int main(int argc, char *argv[]) {
-	if (argc != 8 && argc != 10) {
-		fprintf(stderr, "\nNumero invalido de argumentos.\n");
-		fprintf(stderr, "Uso: heatSim N tEsq tSup tDir tInf iter maxD (trab csz)\n\n");
+	if (argc != 7 && argc != 9 && argc != 10) {
+		fprintf(stderr, "\nNúmero de Argumentos Inválido.\n");
+		fprintf(stderr, "Utilização: heatSim N tEsq tSup tDir tInf iter trab csz maxD\n\n");
 		return 1;
 	}
 
@@ -263,22 +263,24 @@ int main(int argc, char *argv[]) {
 	int iter = parse_integer_or_exit(argv[6], "iter");
 	int trab = 1;
 	int csz  = 0;
-	if (9 <= argc && argc <= 10) {
-		trab = parse_integer_or_exit(argv[8], "trab");
-		csz  = parse_integer_or_exit(argv[9], "csz");
+	if (8 <= argc && argc <= 9) {
+		trab = parse_integer_or_exit(argv[7], "trab");
+		csz  = parse_integer_or_exit(argv[8], "csz");
 	}
 
-	double maxD;
+	double maxD = 0;
 	struct { double esq, sup, dir, inf; } t;
 	t.esq = parse_double_or_exit(argv[2], "tEsq");
 	t.sup = parse_double_or_exit(argv[3], "tSup");
 	t.dir = parse_double_or_exit(argv[4], "tDir");
 	t.inf = parse_double_or_exit(argv[5], "tInf");
-	maxD  = parse_double_or_exit(argv[7], "maxD");
+	if (10 <= argc) {
+		maxD = parse_double_or_exit(argv[7], "maxD");
+	}
 
 	fprintf(stderr, "\nArgumentos:\n"
 		" N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d maxD=%.1f",
-		N, t.esq, t.sup, t.dir, t.inf, iter, maxD, trab, csz
+		N, t.esq, t.sup, t.dir, t.inf, iter, trab, csz, maxD
 	);
 
 	/* VERIFICAR SE ARGUMENTOS ESTÃO CONFORME O ENUNCIADO */
