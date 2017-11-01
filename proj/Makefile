@@ -1,5 +1,5 @@
-SRCDIR ?= src
-OBJDIR = bld
+SRCDIR ?= .
+OBJDIR = .
 DEPS = $(OBJDIR)/*.d
 
 INCLUDE += -I$(SRCDIR)
@@ -21,7 +21,7 @@ EXECFILE ?= heatSim
 EXEC = $(EXECFILE)
 
 # Filtering files for rule management
-SRC := $(shell find $(SRCDIR) -name *.c)
+SRC := $(shell find $(SRCDIR) -name "*.c")
 OBJ := $(subst $(SRCDIR),$(OBJDIR),$(SRC:%.c=%.o))
 
 # Objects and dependencies compilation
@@ -47,6 +47,6 @@ zip:
 	zip -v $(ZIPFILE) $(SRCDIR)/*.[ch] Makefile
 
 clean:
-	rm -rf $(ZIPFILE) $(OBJDIR)/* $(DEPS) $(EXEC) *.DS_Store
+	rm -rf $(ZIPFILE) $(OBJDIR)/*.o $(DEPS) $(EXEC) *.DS_Store
 
 .PHONY: all clean zip
