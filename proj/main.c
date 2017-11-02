@@ -21,7 +21,6 @@ typedef struct simul_args_t {
 	int k;       /* Número de linhas a processar por tarefa trabalhadora */
 	int iter;    /* Número de iterações a processar */
 	double maxD; /* Limiar de travagem */
-
 } simul_args_t;
 void *slave_thread(void *arg);
 
@@ -277,12 +276,12 @@ int main(int argc, char *argv[]) {
 	/* Inicializar tarefas uma a uma */
 	pthread_t *slaves = malloc(trab * sizeof(*slaves));
 	if (is_arg_null(slaves, "Erro ao alocar memória para escravos.")) {
-		return -1;
+		return EXIT_FAILURE;
 	}
 
 	simul_args_t *slave_args = malloc(trab * sizeof(*slave_args));
 	if (is_arg_null(slave_args, "Erro ao alocar memória para escravos.")) {
-		return -1;
+		return EXIT_FAILURE;
 	}
 
 	/* Primeiro set de iterações */
