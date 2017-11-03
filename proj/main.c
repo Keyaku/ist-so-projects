@@ -149,10 +149,7 @@ DoubleMatrix2D *simul(
 	DoubleMatrix2D *matrix_temp = NULL;
 
 	/* Diferencial para o lumiar de travagem */
-	double d = 0;
-	int is_done = 0;
-
-	while (it-- > 0 && !is_done) {
+	while (it-- > 0) {
 		/* Processamos uma iteração */
 		for (int i = first+1; i < linhas-1; i++) {
 			for (int j = 1; j < colunas-1; j++) {
@@ -167,20 +164,18 @@ DoubleMatrix2D *simul(
 			}
 		}
 
+		/* Monta a barreira para verificar se o maxD foi atingido */
+		lock_or_exit(&barrier.cond_mutex);
+		barrier_wait(&barrier, id);
+
 		/* Verificamos se maxD foi atingido */
-		if (maxD != 0) {
-			d = 0;
-			for (int j = 1; j < colunas-1; j++) {
-				double diff = dm2dGetEntry(matrix_aux, first+1, j) - dm2dGetEntry(matrix, first+1, j);
-				d = max(d, diff);
-			}
-			is_done = d < maxD;
+		if (dm2dDelimited(matrix, matrix_aux, colunas, maxD)) {
+			unlock_or_exit(&barrier.cond_mutex);
+			break;
 		}
 
-		/* Monta a barreira e espera pelas outras tarefas */
-		lock_or_exit(&barrier.cond_mutex);
+		/* Monta a barreira para poder trocar os ponteiros das matrizes */
 		if (barrier_wait(&barrier, id)) {
-			/* Switching pointers between matrices, avoids boilerplate code */
 			matrix_temp = matrix;
 			matrix = matrix_aux;
 			matrix_aux = matrix_temp;

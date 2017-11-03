@@ -112,3 +112,24 @@ void dm2dPrint(DoubleMatrix2D *matrix) {
 		printf ("\n");
 	}
 }
+
+/*--------------------------------------------------------------------
+| Function: dm2dDelimited
+---------------------------------------------------------------------*/
+#define max(a, b) a < b ? b : a
+
+int dm2dDelimited(DoubleMatrix2D *m, DoubleMatrix2D *m_aux, int n_c, double delimiter) {
+	double d = 0;
+
+	if (delimiter > 0) {
+		for (int j = 1; j < n_c-1; j++) {
+			/* Checks ONLY for the 1st line of both matrices */
+			double diff = dm2dGetEntry(m_aux, 1, j) - dm2dGetEntry(m, 1, j);
+			d = max(d, diff);
+		}
+	}
+
+	return d < delimiter;
+}
+
+#undef max
