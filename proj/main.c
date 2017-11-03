@@ -142,7 +142,7 @@ DoubleMatrix2D *simul(
 	double d = 0;
 	int is_done = 0;
 
-	while (it-- > 0 && !is_done) {
+	while (it > 0 && !is_done) {
 		if (pthread_mutex_lock(&barrier.cond_mutex)) {
 			fprintf(stderr, "\nErro ao bloquear cond_mutex\n");
 			exit(EXIT_FAILURE);
@@ -181,6 +181,7 @@ DoubleMatrix2D *simul(
 
 		}
 
+		it--;
 		if (pthread_mutex_unlock(&barrier.cond_mutex)) {
 			fprintf(stderr, "\nErro ao desbloquear cond_mutex\n");
 			exit(EXIT_FAILURE);
