@@ -267,13 +267,9 @@ int main(int argc, char *argv[]) {
 	dm2dSetColumnTo(matrix, 0, t.esq);
 	dm2dSetColumnTo(matrix, N+1, t.dir);
 	dm2dCopy(matrix_aux, matrix);
-
-	/* Lancemos a simulação */
 	DoubleMatrix2D *result = matrix;
-	size_t idx;
-	int linha = 0;
 
-	/* Inicializar tarefas uma a uma */
+	/* Preparemos as trabalhadoras */
 	pthread_t *slaves = malloc(trab * sizeof(*slaves));
 	if (is_arg_null(slaves, "Erro ao alocar memória para escravos.")) {
 		return EXIT_FAILURE;
@@ -284,15 +280,16 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	/* Primeiro set de iterações */
-	for (idx = 0; idx < trab; idx++, linha += k) {
+	/* Começamos por inicializar as tarefas uma a uma */
+	size_t idx = 0;
+	for (int linha = 0; idx < trab; idx++, linha += k) {
 		slave_args[idx].id = idx+1;
 		slave_args[idx].first = linha;
 		slave_args[idx].N = N;
 		slave_args[idx].k = k;
 		slave_args[idx].iter = iter;
 
-		/* Verificando se o fio de execução foi correctamente criado */
+		/* Verificando se a trabalhadora foi correctamente criada */
 		if (pthread_create(&slaves[idx], NULL, slave_thread, &slave_args[idx])) {
 			fprintf(stderr, "\nErro ao criar um escravo\n");
 			return EXIT_FAILURE;
