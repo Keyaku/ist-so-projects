@@ -25,9 +25,14 @@ typedef struct simul_args_t {
 void *slave_thread(void *arg);
 
 /* Material de concorrência */
-// TODO
+typedef struct barrier_t {
+	pthread_mutex_t cond_mutex;
+	pthread_cond_t wait_for_iteration;
+	size_t size, count;
+} barrier_t;
 
 /* Variáveis globais */
+barrier_t barrier;                   /* A nossa barreira */
 DoubleMatrix2D *matrix, *matrix_aux; /* As nossas duas matrizes */
 
 /*--------------------------------------------------------------------
@@ -45,6 +50,67 @@ double average(double *array, size_t size) {
 
 #define array_len(arr) sizeof arr / sizeof *arr
 #define max(a, b) a < b ? b : a
+
+/*--------------------------------------------------------------------
+| Functions: Initializing and cleaning multithreading material
+| - barrier_init()
+| - barrier_deinit()
+| - barrier_wait()
+---------------------------------------------------------------------*/
+int barrier_init(barrier_t *barrier, size_t size) {
+	if (pthread_mutex_init(&barrier->cond_mutex, NULL)) {
+		fprintf(stderr, "\nErro ao inicializar wait_mutex\n");
+		return 1;
+	}
+
+	if (pthread_cond_init(&barrier->wait_for_iteration, NULL)) {
+		fprintf(stderr, "\nErro ao inicializar variável de condição\n");
+		return 2;
+	}
+
+	barrier->size = size;
+	barrier->count = 0;
+	return 0;
+}
+
+int barrier_deinit(barrier_t *barrier) {
+	if (pthread_mutex_destroy(&barrier->cond_mutex)) {
+		fprintf(stderr, "\nErro ao inicializar wait_mutex\n");
+		return 1;
+	}
+
+	if (pthread_cond_destroy(&barrier->wait_for_iteration)) {
+		fprintf(stderr, "\nErro ao destruir variável de condição\n");
+		return 2;
+	}
+
+	return 0;
+}
+
+void barrier_wait(barrier_t *barrier, int id) {
+	barrier->count++;
+
+	/* Se o contador for inferior ao tamanho, bloquear thread */
+	if (0 < barrier->count && barrier->count < barrier->size) {
+		if (pthread_cond_wait(&barrier->wait_for_iteration, &barrier->cond_mutex)) {
+			fprintf(stderr, "\nErro ao esperar pela variável de condição\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+	/* Caso contrário, desbloqueia todas as threads */
+	else if (barrier->count >= barrier->size) {
+		barrier->count = 0;
+		if (pthread_cond_broadcast(&barrier->wait_for_iteration)) {
+			fprintf(stderr, "\nErro ao desbloquear variável de condição\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+	/* Se nenhuma das condições acima tiverem sido validadas, houve um problema */
+	else {
+		fprintf(stderr, "\nErro ao montar a barreira\n");
+		exit(EXIT_FAILURE);
+	}
+}
 
 /*--------------------------------------------------------------------
 | Function: simul
@@ -65,6 +131,11 @@ DoubleMatrix2D *simul(
 	int is_done = 0;
 
 	while (it-- > 0 && !is_done) {
+		if (pthread_mutex_lock(&barrier.cond_mutex)) {
+			fprintf(stderr, "\nErro ao bloquear cond_mutex\n");
+			exit(EXIT_FAILURE);
+		}
+
 		/* Processamos uma iteração */
 		for (int i = first+1; i < linhas-1; i++) {
 			for (int j = 1; j < colunas-1; j++) {
@@ -89,10 +160,17 @@ DoubleMatrix2D *simul(
 			is_done = d < maxD;
 		}
 
+		barrier_wait(&barrier, id);
+
 		/* Switching pointers between matrices, avoids boilerplate code */
 		matrix_temp = matrix;
 		matrix = matrix_aux;
 		matrix_aux = matrix_temp;
+
+		if (pthread_mutex_unlock(&barrier.cond_mutex)) {
+			fprintf(stderr, "\nErro ao desbloquear cond_mutex\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	/* Se houve uma confusão de pointers, resolvemos o de matrix_aux */
@@ -250,6 +328,11 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
+	/* Inicializamos o nosso material mutlithreading */
+	if (barrier_init(&barrier, trab)) {
+		return EXIT_FAILURE;
+	}
+
 	/* Criar matrizes */
 	matrix = dm2dNew(N+2, N+2);
 	if (is_arg_null(matrix, "Erro ao criar Matrix2d.")) {
@@ -312,6 +395,9 @@ int main(int argc, char *argv[]) {
 	dm2dPrint(result);
 
 	/* Limpar estruturas */
+	if (barrier_deinit(&barrier)) {
+		return EXIT_FAILURE;
+	}
 	free(slaves);
 	free(slave_args);
 	dm2dFree(matrix);
