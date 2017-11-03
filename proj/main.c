@@ -386,6 +386,7 @@ int main(int argc, char *argv[]) {
 		slave_args[idx].N = N;
 		slave_args[idx].k = k;
 		slave_args[idx].iter = iter;
+		slave_args[idx].maxD = maxD;
 
 		/* Verificando se a trabalhadora foi correctamente criada */
 		if (pthread_create(&slaves[idx], NULL, slave_thread, &slave_args[idx])) {
