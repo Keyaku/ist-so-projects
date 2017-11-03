@@ -53,9 +53,15 @@ double average(double *array, size_t size) {
 
 /*--------------------------------------------------------------------
 | Functions: Initializing and cleaning multithreading material
-| - barrier_init()
-| - barrier_deinit()
-| - barrier_wait()
+| - barrier_init(barrier, size)
+|   | Initializes given barrier with given size
+|
+| - barrier_deinit(barrier)
+|   | Destroys given barrier
+|
+| - barrier_wait(barrier, tid)
+|   | Waits with given barrier.
+|   | returns true (1) if all threads were unlocked, false (0) otherwise
 ---------------------------------------------------------------------*/
 int barrier_init(barrier_t *barrier, size_t size) {
 	if (pthread_mutex_init(&barrier->cond_mutex, NULL)) {
@@ -87,7 +93,7 @@ int barrier_deinit(barrier_t *barrier) {
 	return 0;
 }
 
-void barrier_wait(barrier_t *barrier, int id) {
+int barrier_wait(barrier_t *barrier, int id) {
 	barrier->count++;
 
 	/* Se o contador for inferior ao tamanho, bloquear thread */
@@ -96,6 +102,8 @@ void barrier_wait(barrier_t *barrier, int id) {
 			fprintf(stderr, "\nErro ao esperar pela variável de condição\n");
 			exit(EXIT_FAILURE);
 		}
+
+		return 0;
 	}
 	/* Caso contrário, desbloqueia todas as threads */
 	else if (barrier->count >= barrier->size) {
@@ -104,12 +112,16 @@ void barrier_wait(barrier_t *barrier, int id) {
 			fprintf(stderr, "\nErro ao desbloquear variável de condição\n");
 			exit(EXIT_FAILURE);
 		}
+
+		return 1;
 	}
 	/* Se nenhuma das condições acima tiverem sido validadas, houve um problema */
 	else {
 		fprintf(stderr, "\nErro ao montar a barreira\n");
 		exit(EXIT_FAILURE);
 	}
+
+	return 0;
 }
 
 /*--------------------------------------------------------------------
@@ -160,12 +172,14 @@ DoubleMatrix2D *simul(
 			is_done = d < maxD;
 		}
 
-		barrier_wait(&barrier, id);
+		/* Monta a barreira e espera pelas outras tarefas */
+		if (barrier_wait(&barrier, id)) {
+			/* Switching pointers between matrices, avoids boilerplate code */
+			matrix_temp = matrix;
+			matrix = matrix_aux;
+			matrix_aux = matrix_temp;
 
-		/* Switching pointers between matrices, avoids boilerplate code */
-		matrix_temp = matrix;
-		matrix = matrix_aux;
-		matrix_aux = matrix_temp;
+		}
 
 		if (pthread_mutex_unlock(&barrier.cond_mutex)) {
 			fprintf(stderr, "\nErro ao desbloquear cond_mutex\n");
