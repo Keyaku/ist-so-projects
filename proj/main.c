@@ -306,7 +306,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	fprintf(stderr, "\nArgumentos:\n"
-		" N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d maxD=%.1f",
+		" N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d maxD=%.3f",
 		  N,   t.esq,    t.sup,    t.dir,    t.inf,    iter,   trab,   csz,   maxD
 	);
 

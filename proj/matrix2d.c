@@ -115,17 +115,22 @@ void dm2dPrint(DoubleMatrix2D *matrix) {
 
 /*--------------------------------------------------------------------
 | Function: dm2dDelimited
+| Checks diagonally in the shape of an X for delimiter
 ---------------------------------------------------------------------*/
 #define max(a, b) a < b ? b : a
 
-int dm2dDelimited(DoubleMatrix2D *m, DoubleMatrix2D *m_aux, int n_c, double delimiter) {
+int dm2dDelimited(DoubleMatrix2D *m, DoubleMatrix2D *m_aux, int n, double delimiter) {
 	double d = 0;
 
 	if (delimiter > 0) {
-		for (int j = 1; j < n_c-1; j++) {
-			/* Checks ONLY for the 1st line of both matrices */
-			double diff = dm2dGetEntry(m_aux, 1, j) - dm2dGetEntry(m, 1, j);
+		for (int idx = 1; idx < n-1; idx++) {
+			double diff = dm2dGetEntry(m_aux, idx, idx) - dm2dGetEntry(m, idx, idx);
 			d = max(d, diff);
+			if (d > delimiter) { return 0; }
+
+			diff = dm2dGetEntry(m_aux, n-idx, idx) - dm2dGetEntry(m, n-idx, idx);
+			d = max(d, diff);
+			if (d > delimiter) { return 0; }
 		}
 	}
 
