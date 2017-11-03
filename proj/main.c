@@ -95,22 +95,18 @@ int barrier_deinit(barrier_t *barrier) {
 
 int barrier_wait(barrier_t *barrier, int id) {
 	int retval = 0;
-	if (pthread_mutex_lock(&barrier->cond_mutex)) {
-		fprintf(stderr, "\nErro ao bloquear cond_mutex\n");
-		exit(EXIT_FAILURE);
-	}
 
 	barrier->count++;
 
 	/* Se o contador for inferior ao tamanho, bloquear thread */
-	if (0 < barrier->count && barrier->count < barrier->size) {
+	if (barrier->count < barrier->size) {
 		if (pthread_cond_wait(&barrier->wait_for_iteration, &barrier->cond_mutex)) {
 			fprintf(stderr, "\nErro ao esperar pela variável de condição\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 	/* Caso contrário, desbloqueia todas as threads */
-	else if (barrier->count >= barrier->size) {
+	else {
 		barrier->count = 0;
 		if (pthread_cond_broadcast(&barrier->wait_for_iteration)) {
 			fprintf(stderr, "\nErro ao desbloquear variável de condição\n");
@@ -119,16 +115,7 @@ int barrier_wait(barrier_t *barrier, int id) {
 
 		retval = 1;
 	}
-	/* Se nenhuma das condições acima tiverem sido validadas, houve um problema */
-	else {
-		fprintf(stderr, "\nErro ao montar a barreira\n");
-		exit(EXIT_FAILURE);
-	}
 
-	if (pthread_mutex_unlock(&barrier->cond_mutex)) {
-		fprintf(stderr, "\nErro ao desbloquear cond_mutex\n");
-		exit(EXIT_FAILURE);
-	}
 	return retval;
 }
 
@@ -150,7 +137,7 @@ DoubleMatrix2D *simul(
 	double d = 0;
 	int is_done = 0;
 
-	while (it > 0 && !is_done) {
+	while (it-- > 0 && !is_done) {
 		/* Processamos uma iteração */
 		for (int i = first+1; i < linhas-1; i++) {
 			for (int j = 1; j < colunas-1; j++) {
@@ -176,14 +163,20 @@ DoubleMatrix2D *simul(
 		}
 
 		/* Monta a barreira e espera pelas outras tarefas */
+		if (pthread_mutex_lock(&barrier.cond_mutex)) {
+			fprintf(stderr, "\nErro ao bloquear cond_mutex\n");
+			exit(EXIT_FAILURE);
+		}
 		if (barrier_wait(&barrier, id)) {
 			/* Switching pointers between matrices, avoids boilerplate code */
 			matrix_temp = matrix;
 			matrix = matrix_aux;
 			matrix_aux = matrix_temp;
 		}
-
-		it--;
+		if (pthread_mutex_unlock(&barrier.cond_mutex)) {
+			fprintf(stderr, "\nErro ao desbloquear cond_mutex\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	/* Se houve uma confusão de pointers, resolvemos o de matrix_aux */
