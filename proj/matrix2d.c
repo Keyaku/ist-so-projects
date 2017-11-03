@@ -120,15 +120,17 @@ void dm2dPrint(DoubleMatrix2D *matrix) {
 #define max(a, b) a < b ? b : a
 
 int dm2dDelimited(DoubleMatrix2D *m, DoubleMatrix2D *m_aux, int n, double delimiter) {
+	int half = (n >> 1)-1;
+	n--;
 	double d = 0;
 
 	if (delimiter > 0) {
-		for (int idx = 1; idx < n-1; idx++) {
-			double diff = dm2dGetEntry(m_aux, idx, idx) - dm2dGetEntry(m, idx, idx);
+		for (int idx = 1; idx < n; idx++) {
+			double diff = dm2dGetEntry(m_aux, idx, half) - dm2dGetEntry(m, idx, half);
 			d = max(d, diff);
 			if (d > delimiter) { return 0; }
 
-			diff = dm2dGetEntry(m_aux, n-idx, idx) - dm2dGetEntry(m, n-idx, idx);
+			diff = dm2dGetEntry(m_aux, half, idx) - dm2dGetEntry(m, half, idx);
 			d = max(d, diff);
 			if (d > delimiter) { return 0; }
 		}
