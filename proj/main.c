@@ -221,7 +221,7 @@ void *slave_thread(void *arg) {
 	double maxD = simul_arg->maxD;
 
 	/* Fazer cálculos */
-	DoubleMatrix2D *result = simul(first, k+2, N+2, iter, id, maxD);
+	DoubleMatrix2D *result = simul(first, first+k+2, N+2, iter, id, maxD);
 	if (is_arg_null(result, "result (thread)")) {
 		return NULL;
 	}
