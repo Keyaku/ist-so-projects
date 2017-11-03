@@ -51,6 +51,21 @@ double average(double *array, size_t size) {
 #define array_len(arr) sizeof arr / sizeof *arr
 #define max(a, b) a < b ? b : a
 
+/* Helpers for (un)locking mutexes */
+void lock_or_exit(pthread_mutex_t *mutex) {
+	if (pthread_mutex_lock(mutex)) {
+		fprintf(stderr, "\nErro ao bloquear mutex\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+void unlock_or_exit(pthread_mutex_t *mutex) {
+	if (pthread_mutex_unlock(mutex)) {
+		fprintf(stderr, "\nErro ao desbloquear mutex\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 /*--------------------------------------------------------------------
 | Functions: Initializing and cleaning multithreading material
 | - barrier_init(barrier, size)
@@ -163,20 +178,14 @@ DoubleMatrix2D *simul(
 		}
 
 		/* Monta a barreira e espera pelas outras tarefas */
-		if (pthread_mutex_lock(&barrier.cond_mutex)) {
-			fprintf(stderr, "\nErro ao bloquear cond_mutex\n");
-			exit(EXIT_FAILURE);
-		}
+		lock_or_exit(&barrier.cond_mutex);
 		if (barrier_wait(&barrier, id)) {
 			/* Switching pointers between matrices, avoids boilerplate code */
 			matrix_temp = matrix;
 			matrix = matrix_aux;
 			matrix_aux = matrix_temp;
 		}
-		if (pthread_mutex_unlock(&barrier.cond_mutex)) {
-			fprintf(stderr, "\nErro ao desbloquear cond_mutex\n");
-			exit(EXIT_FAILURE);
-		}
+		unlock_or_exit(&barrier.cond_mutex);
 	}
 
 	/* Se houve uma confusão de pointers, resolvemos o de matrix_aux */
