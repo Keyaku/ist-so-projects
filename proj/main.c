@@ -148,7 +148,6 @@ DoubleMatrix2D *simul(
 	DoubleMatrix2D *result = matrix;
 	DoubleMatrix2D *matrix_temp = NULL;
 
-	/* Diferencial para o lumiar de travagem */
 	while (it-- > 0) {
 		/* Processamos uma iteração */
 		for (int i = first+1; i < linhas-1; i++) {
