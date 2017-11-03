@@ -287,7 +287,7 @@ int main(int argc, char *argv[]) {
 	int iter = parse_integer_or_exit(argv[6], "iter");
 	int trab = 1;
 	int csz  = 0;
-	if (8 <= argc && argc <= 9) {
+	if (8 <= argc) {
 		trab = parse_integer_or_exit(argv[7], "trab");
 		csz  = parse_integer_or_exit(argv[8], "csz");
 	}
@@ -304,7 +304,7 @@ int main(int argc, char *argv[]) {
 
 	fprintf(stderr, "\nArgumentos:\n"
 		" N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d maxD=%.1f",
-		N, t.esq, t.sup, t.dir, t.inf, iter, trab, csz, maxD
+		  N,   t.esq,    t.sup,    t.dir,    t.inf,    iter,   trab,   csz,   maxD
 	);
 
 	/* VERIFICAR SE ARGUMENTOS ESTÃO CONFORME O ENUNCIADO */
@@ -318,9 +318,9 @@ int main(int argc, char *argv[]) {
 		{ t.dir, 0, "tDir" },
 		{ t.inf, 0, "tInf" },
 		{ iter,  1, "iter" },
-		{ maxD,  0, "maxD" },
 		{ trab,  1, "trab" },
-		{ csz,   0, "csz"  }
+		{ csz,   0, "csz"  },
+		{ maxD,  0, "maxD" }
 	};
 	for (size_t idx = 0; idx < array_len(arg_checker); idx++) {
 		is_arg_greater_equal_to(arg_checker[idx].arg, arg_checker[idx].val, arg_checker[idx].name);
