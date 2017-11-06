@@ -207,15 +207,18 @@ DoubleMatrix2D *simul(
 ---------------------------------------------------------------------*/
 void *slave_thread(void *arg) {
 	simul_args_t *simul_arg = (simul_args_t*) arg;
-	int id      = simul_arg->id;
-	int first   = simul_arg->first;
-	int N       = simul_arg->N;
-	int k       = simul_arg->k;
-	int iter    = simul_arg->iter;
-	double maxD = simul_arg->maxD;
+	int n_l = simul_arg->first + simul_arg->k + 2;
+	int n_c = simul_arg->N + 2;
 
 	/* Fazer cálculos */
-	DoubleMatrix2D *result = simul(first, first+k+2, N+2, iter, id, maxD);
+	DoubleMatrix2D *result = simul(
+		simul_arg->first,
+		n_l,
+		n_c,
+		simul_arg->iter,
+		simul_arg->id,
+		simul_arg->maxD
+	);
 	if (is_arg_null(result, "result (thread)")) {
 		return NULL;
 	}
