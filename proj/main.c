@@ -349,7 +349,6 @@ int main(int argc, char *argv[]) {
 	}
 	matrix_aux = dm2dNew(N+2, N+2);
 	if (is_arg_null(matrix_aux, "Erro ao criar Matrix2d.")) {
-		dm2dFree(matrix);
 		return -1;
 	}
 
