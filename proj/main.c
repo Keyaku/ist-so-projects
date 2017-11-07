@@ -25,9 +25,14 @@ typedef struct simul_args_t {
 void *slave_thread(void *arg);
 
 /* Material de concorrência */
-// TODO
+typedef struct barrier_t {
+	pthread_mutex_t cond_mutex;
+	pthread_cond_t wait_for_iteration;
+	size_t size, count;
+} barrier_t;
 
 /* Variáveis globais */
+barrier_t barrier;                   /* A nossa barreira */
 DoubleMatrix2D *matrix, *matrix_aux; /* As nossas duas matrizes */
 
 /*--------------------------------------------------------------------
@@ -46,6 +51,89 @@ double average(double *array, size_t size) {
 #define array_len(arr) sizeof arr / sizeof *arr
 #define max(a, b) a < b ? b : a
 
+/* Helpers for (un)locking mutexes */
+void lock_or_exit(pthread_mutex_t *mutex) {
+	if (pthread_mutex_lock(mutex)) {
+		fprintf(stderr, "\nErro ao bloquear mutex\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+void unlock_or_exit(pthread_mutex_t *mutex) {
+	if (pthread_mutex_unlock(mutex)) {
+		fprintf(stderr, "\nErro ao desbloquear mutex\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+/*--------------------------------------------------------------------
+| Functions: Initializing and cleaning multithreading material
+| - barrier_init(barrier, size)
+|   | Initializes given barrier with given size
+|
+| - barrier_deinit(barrier)
+|   | Destroys given barrier
+|
+| - barrier_wait(barrier, tid)
+|   | Waits with given barrier.
+|   | returns true (1) if all threads were unlocked, false (0) otherwise
+---------------------------------------------------------------------*/
+int barrier_init(barrier_t *barrier, size_t size) {
+	if (pthread_mutex_init(&barrier->cond_mutex, NULL)) {
+		fprintf(stderr, "\nErro ao inicializar wait_mutex\n");
+		return 1;
+	}
+
+	if (pthread_cond_init(&barrier->wait_for_iteration, NULL)) {
+		fprintf(stderr, "\nErro ao inicializar variável de condição\n");
+		return 2;
+	}
+
+	barrier->size = size;
+	barrier->count = 0;
+	return 0;
+}
+
+int barrier_deinit(barrier_t *barrier) {
+	if (pthread_mutex_destroy(&barrier->cond_mutex)) {
+		fprintf(stderr, "\nErro ao inicializar wait_mutex\n");
+		return 1;
+	}
+
+	if (pthread_cond_destroy(&barrier->wait_for_iteration)) {
+		fprintf(stderr, "\nErro ao destruir variável de condição\n");
+		return 2;
+	}
+
+	return 0;
+}
+
+int barrier_wait(barrier_t *barrier, int id) {
+	int retval = 0;
+
+	barrier->count++;
+
+	/* Se o contador for inferior ao tamanho, bloquear thread */
+	if (barrier->count < barrier->size) {
+		if (pthread_cond_wait(&barrier->wait_for_iteration, &barrier->cond_mutex)) {
+			fprintf(stderr, "\nErro ao esperar pela variável de condição\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+	/* Caso contrário, desbloqueia todas as threads */
+	else {
+		barrier->count = 0;
+		if (pthread_cond_broadcast(&barrier->wait_for_iteration)) {
+			fprintf(stderr, "\nErro ao desbloquear variável de condição\n");
+			exit(EXIT_FAILURE);
+		}
+
+		retval = 1;
+	}
+
+	return retval;
+}
+
 /*--------------------------------------------------------------------
 | Function: simul
 ---------------------------------------------------------------------*/
@@ -60,11 +148,7 @@ DoubleMatrix2D *simul(
 	DoubleMatrix2D *result = matrix;
 	DoubleMatrix2D *matrix_temp = NULL;
 
-	/* Diferencial para o lumiar de travagem */
-	double d = 0;
-	int is_done = 0;
-
-	while (it-- > 0 && !is_done) {
+	while (it-- > 0) {
 		/* Processamos uma iteração */
 		for (int i = first+1; i < linhas-1; i++) {
 			for (int j = 1; j < colunas-1; j++) {
@@ -79,20 +163,23 @@ DoubleMatrix2D *simul(
 			}
 		}
 
+		/* Monta a barreira para verificar se o maxD foi atingido */
+		lock_or_exit(&barrier.cond_mutex);
+		barrier_wait(&barrier, id);
+
 		/* Verificamos se maxD foi atingido */
-		if (maxD != 0) {
-			d = 0;
-			for (int j = 1; j < colunas-1; j++) {
-				double diff = dm2dGetEntry(matrix_aux, first+1, j) - dm2dGetEntry(matrix, first+1, j);
-				d = max(d, diff);
-			}
-			is_done = d < maxD;
+		if (dm2dDelimited(matrix, matrix_aux, colunas, maxD)) {
+			unlock_or_exit(&barrier.cond_mutex);
+			break;
 		}
 
-		/* Switching pointers between matrices, avoids boilerplate code */
-		matrix_temp = matrix;
-		matrix = matrix_aux;
-		matrix_aux = matrix_temp;
+		/* Monta a barreira para poder trocar os ponteiros das matrizes */
+		if (barrier_wait(&barrier, id)) {
+			matrix_temp = matrix;
+			matrix = matrix_aux;
+			matrix_aux = matrix_temp;
+		}
+		unlock_or_exit(&barrier.cond_mutex);
 	}
 
 	/* Se houve uma confusão de pointers, resolvemos o de matrix_aux */
@@ -120,15 +207,18 @@ DoubleMatrix2D *simul(
 ---------------------------------------------------------------------*/
 void *slave_thread(void *arg) {
 	simul_args_t *simul_arg = (simul_args_t*) arg;
-	int id      = simul_arg->id;
-	int first   = simul_arg->first;
-	int N       = simul_arg->N;
-	int k       = simul_arg->k;
-	int iter    = simul_arg->iter;
-	double maxD = simul_arg->maxD;
+	int n_l = simul_arg->first + simul_arg->k + 2;
+	int n_c = simul_arg->N + 2;
 
 	/* Fazer cálculos */
-	DoubleMatrix2D *result = simul(first, k+2, N+2, iter, id, maxD);
+	DoubleMatrix2D *result = simul(
+		simul_arg->first,
+		n_l,
+		n_c,
+		simul_arg->iter,
+		simul_arg->id,
+		simul_arg->maxD
+	);
 	if (is_arg_null(result, "result (thread)")) {
 		return NULL;
 	}
@@ -203,7 +293,7 @@ int main(int argc, char *argv[]) {
 	int iter = parse_integer_or_exit(argv[6], "iter");
 	int trab = 1;
 	int csz  = 0;
-	if (8 <= argc && argc <= 9) {
+	if (8 <= argc) {
 		trab = parse_integer_or_exit(argv[7], "trab");
 		csz  = parse_integer_or_exit(argv[8], "csz");
 	}
@@ -219,8 +309,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	fprintf(stderr, "\nArgumentos:\n"
-		" N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d maxD=%.1f",
-		N, t.esq, t.sup, t.dir, t.inf, iter, trab, csz, maxD
+		" N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d maxD=%.3f",
+		  N,   t.esq,    t.sup,    t.dir,    t.inf,    iter,   trab,   csz,   maxD
 	);
 
 	/* VERIFICAR SE ARGUMENTOS ESTÃO CONFORME O ENUNCIADO */
@@ -234,9 +324,9 @@ int main(int argc, char *argv[]) {
 		{ t.dir, 0, "tDir" },
 		{ t.inf, 0, "tInf" },
 		{ iter,  1, "iter" },
-		{ maxD,  0, "maxD" },
 		{ trab,  1, "trab" },
-		{ csz,   0, "csz"  }
+		{ csz,   0, "csz"  },
+		{ maxD,  0, "maxD" }
 	};
 	for (size_t idx = 0; idx < array_len(arg_checker); idx++) {
 		is_arg_greater_equal_to(arg_checker[idx].arg, arg_checker[idx].val, arg_checker[idx].name);
@@ -250,6 +340,11 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
+	/* Inicializamos o nosso material mutlithreading */
+	if (barrier_init(&barrier, trab)) {
+		return EXIT_FAILURE;
+	}
+
 	/* Criar matrizes */
 	matrix = dm2dNew(N+2, N+2);
 	if (is_arg_null(matrix, "Erro ao criar Matrix2d.")) {
@@ -257,7 +352,6 @@ int main(int argc, char *argv[]) {
 	}
 	matrix_aux = dm2dNew(N+2, N+2);
 	if (is_arg_null(matrix_aux, "Erro ao criar Matrix2d.")) {
-		dm2dFree(matrix);
 		return -1;
 	}
 
@@ -267,13 +361,9 @@ int main(int argc, char *argv[]) {
 	dm2dSetColumnTo(matrix, 0, t.esq);
 	dm2dSetColumnTo(matrix, N+1, t.dir);
 	dm2dCopy(matrix_aux, matrix);
-
-	/* Lancemos a simulação */
 	DoubleMatrix2D *result = matrix;
-	size_t idx;
-	int linha = 0;
 
-	/* Inicializar tarefas uma a uma */
+	/* Preparemos as trabalhadoras */
 	pthread_t *slaves = malloc(trab * sizeof(*slaves));
 	if (is_arg_null(slaves, "Erro ao alocar memória para escravos.")) {
 		return EXIT_FAILURE;
@@ -284,15 +374,17 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	/* Primeiro set de iterações */
-	for (idx = 0; idx < trab; idx++, linha += k) {
+	/* Começamos por inicializar as tarefas uma a uma */
+	size_t idx = 0;
+	for (int linha = 0; idx < trab; idx++, linha += k) {
 		slave_args[idx].id = idx+1;
 		slave_args[idx].first = linha;
 		slave_args[idx].N = N;
 		slave_args[idx].k = k;
 		slave_args[idx].iter = iter;
+		slave_args[idx].maxD = maxD;
 
-		/* Verificando se o fio de execução foi correctamente criado */
+		/* Verificando se a trabalhadora foi correctamente criada */
 		if (pthread_create(&slaves[idx], NULL, slave_thread, &slave_args[idx])) {
 			fprintf(stderr, "\nErro ao criar um escravo\n");
 			return EXIT_FAILURE;
@@ -315,6 +407,9 @@ int main(int argc, char *argv[]) {
 	dm2dPrint(result);
 
 	/* Limpar estruturas */
+	if (barrier_deinit(&barrier)) {
+		return EXIT_FAILURE;
+	}
 	free(slaves);
 	free(slave_args);
 	dm2dFree(matrix);
