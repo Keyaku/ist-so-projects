@@ -51,6 +51,8 @@ double average(double *array, size_t size) {
 #define array_len(arr) sizeof arr / sizeof *arr
 #define max(a, b) a < b ? b : a
 
+#define str_or_null(a) a ? a : "null"
+
 /* Helpers for (un)locking mutexes */
 void lock_or_exit(pthread_mutex_t *mutex) {
 	if (pthread_mutex_lock(mutex)) {
@@ -250,6 +252,59 @@ double parse_double_or_exit(const char *str, const char *name) {
 }
 
 /*--------------------------------------------------------------------
+| Function: File handling
+| - file_exists()
+| - open_or_create_new_matrix_file()
+---------------------------------------------------------------------*/
+
+/* Material de manuseamento de ficheiros */
+#define F_EXISTS 1
+#define F_NOT_EXISTS 0
+#define F_ERROR -1
+
+int file_exists(FILE *f) {
+	if (f != NULL) {
+		return F_EXISTS;
+	}
+	if (errno == ENOENT) {
+		return F_NOT_EXISTS;
+	}
+	return F_ERROR;
+}
+
+FILE *open_or_create_new_matrix_file(const char* filename, int *read_mode) {
+	FILE *f = fopen(filename, "r");
+
+	/* Check if file exists */
+	int state = file_exists(f);
+	if (state == F_EXISTS) {
+		/* close the stream and reopen it to read+write */
+		fclose(f);
+		f = fopen(filename, "rw");
+		/* if opening THIS stream caused an error, exit the program */
+		if (f == NULL) {
+			fprintf(stderr, "Não foi possível escrever sobre \"%s\"\n", filename);
+			return NULL;
+		}
+
+		*read_mode = 1;
+	} else if (state == F_ERROR) {
+		fprintf(stderr, "Não foi possível abrir \"%s\"\n", filename);
+		return NULL;
+	} else {
+		/* Opening stream for write-only */
+		f = fopen(filename, "w");
+		/* if opening THIS stream caused an error, exit the program */
+		if (f == NULL) {
+			fprintf(stderr, "Não foi possível escrever sobre \"%s\"\n", filename);
+			return NULL;
+		}
+	}
+
+	return f;
+}
+
+/*--------------------------------------------------------------------
 | Function: Arguments checking
 | - is_arg_greater_equal_to(value, greater, name)
 | - is_arg_null(argument, name)
@@ -280,22 +335,30 @@ int is_arg_null(void *arg, const char *msg) {
 |
 ---------------------------------------------------------------------*/
 int main(int argc, char *argv[]) {
-	if (argc != 7 && argc != 9 && argc != 10) {
+	if (argc != 7 && argc != 9 && argc != 10 && argc != 12) {
 		fprintf(stderr, "\nNúmero de Argumentos Inválido.\n");
-		fprintf(stderr, "Utilização: heatSim N tEsq tSup tDir tInf iter trab csz maxD\n\n");
+		fprintf(stderr,
+			"Utilização: heatSim N tEsq tSup tDir tInf iter trab csz maxD fichS periodoS\n\n"
+		);
 		return 1;
 	}
 
 	/* argv[0] = program name */
-	int N    = parse_integer_or_exit(argv[1], "N");
-	int iter = parse_integer_or_exit(argv[6], "iter");
-	int trab = 1;
-	int csz  = 0;
+	/* Parsing integers */
+	int N        = parse_integer_or_exit(argv[1], "N");
+	int iter     = parse_integer_or_exit(argv[6], "iter");
+	int trab     = 1;
+	int csz      = 0;
+	int periodoS = 0;
 	if (8 <= argc) {
-		trab = parse_integer_or_exit(argv[7], "trab");
-		csz  = parse_integer_or_exit(argv[8], "csz");
+		trab     = parse_integer_or_exit(argv[7], "trab");
+		csz      = parse_integer_or_exit(argv[8], "csz");
+	}
+	if (11 <= argc) {
+		periodoS = parse_integer_or_exit(argv[11], "periodoS");
 	}
 
+	/* Parsing doubles */
 	double maxD = 0;
 	struct { double esq, sup, dir, inf; } t;
 	t.esq = parse_double_or_exit(argv[2], "tEsq");
@@ -306,9 +369,22 @@ int main(int argc, char *argv[]) {
 		maxD = parse_double_or_exit(argv[9], "maxD");
 	}
 
+	/* Parsing other arguments */
+	int read_mode = 0;
+	const char* fichS = NULL;
+	FILE *matrixFile = NULL;
+	if (11 <= argc) {
+		/* Opening the file appropriately */
+		matrixFile = open_or_create_new_matrix_file(argv[10], &read_mode);
+		if (matrixFile != NULL) {
+			fichS = argv[10];
+		}
+	}
+
 	fprintf(stderr, "\nArgumentos:\n"
-		" N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d maxD=%.3f",
-		  N,   t.esq,    t.sup,    t.dir,    t.inf,    iter,   trab,   csz,   maxD
+		" N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d maxD=%.3f"
+		" fichS=%s periodoS=%d",
+		  N, t.esq, t.sup, t.dir, t.inf, iter, trab, csz, maxD, str_or_null(fichS), periodoS
 	);
 
 	/* VERIFICAR SE ARGUMENTOS ESTÃO CONFORME O ENUNCIADO */
@@ -316,15 +392,16 @@ int main(int argc, char *argv[]) {
 		double arg, val;
 		const char* name;
 	} arg_checker[] = {
-		{ N,     1, "N"    },
-		{ t.esq, 0, "tEsq" },
-		{ t.sup, 0, "tSup" },
-		{ t.dir, 0, "tDir" },
-		{ t.inf, 0, "tInf" },
-		{ iter,  1, "iter" },
-		{ trab,  1, "trab" },
-		{ csz,   0, "csz"  },
-		{ maxD,  0, "maxD" }
+		{ N,        1, "N"        },
+		{ t.esq,    0, "tEsq"     },
+		{ t.sup,    0, "tSup"     },
+		{ t.dir,    0, "tDir"     },
+		{ t.inf,    0, "tInf"     },
+		{ iter,     1, "iter"     },
+		{ trab,     1, "trab"     },
+		{ csz,      0, "csz"      },
+		{ maxD,     0, "maxD"     },
+		{ periodoS, 0, "periodoS" }
 	};
 	for (size_t idx = 0; idx < array_len(arg_checker); idx++) {
 		is_arg_greater_equal_to(arg_checker[idx].arg, arg_checker[idx].val, arg_checker[idx].name);
@@ -344,20 +421,26 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Criar matrizes */
-	matrix = dm2dNew(N+2, N+2);
-	if (is_arg_null(matrix, "Erro ao criar Matrix2d.")) {
-		return -1;
-	}
 	matrix_aux = dm2dNew(N+2, N+2);
 	if (is_arg_null(matrix_aux, "Erro ao criar Matrix2d.")) {
 		return -1;
 	}
 
 	/* Preenchendo a nossa matriz de acordo com os argumentos */
-	dm2dSetLineTo(matrix, 0, t.sup);
-	dm2dSetLineTo(matrix, N+1, t.inf);
-	dm2dSetColumnTo(matrix, 0, t.esq);
-	dm2dSetColumnTo(matrix, N+1, t.dir);
+	if (!read_mode) {
+		matrix = dm2dNew(N+2, N+2);
+		if (is_arg_null(matrix, "Erro ao criar Matrix2d.")) {
+			return EXIT_FAILURE;
+		}
+
+		dm2dSetLineTo(matrix, 0, t.sup);
+		dm2dSetLineTo(matrix, N+1, t.inf);
+		dm2dSetColumnTo(matrix, 0, t.esq);
+		dm2dSetColumnTo(matrix, N+1, t.dir);
+	} else {
+		matrix = readMatrix2dFromFile(matrixFile, N+2, N+2);
+	}
+
 	dm2dCopy(matrix_aux, matrix);
 	DoubleMatrix2D *result = matrix;
 
@@ -412,6 +495,8 @@ int main(int argc, char *argv[]) {
 	free(slave_args);
 	dm2dFree(matrix);
 	dm2dFree(matrix_aux);
+
+	fclose(matrixFile);
 
 	return EXIT_SUCCESS;
 }
