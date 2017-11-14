@@ -35,6 +35,7 @@ typedef struct barrier_t {
 barrier_t barrier;                   /* A nossa barreira */
 DoubleMatrix2D *matrix, *matrix_aux; /* As nossas duas matrizes */
 int periodoS;
+FILE *matrix_file;
 
 /*--------------------------------------------------------------------
 | Helper functions
@@ -373,11 +374,11 @@ int main(int argc, char *argv[]) {
 	/* Parsing other arguments */
 	int read_mode = 0;
 	const char* fichS = NULL;
-	FILE *matrixFile = NULL;
+	matrix_file = NULL;
 	if (11 <= argc) {
 		/* Opening the file appropriately */
-		matrixFile = open_or_create_new_matrix_file(argv[10], &read_mode);
-		if (matrixFile != NULL) {
+		matrix_file = open_or_create_new_matrix_file(argv[10], &read_mode);
+		if (matrix_file != NULL) {
 			fichS = argv[10];
 		}
 	}
@@ -429,7 +430,7 @@ int main(int argc, char *argv[]) {
 
 	/* Preenchendo a nossa matriz de acordo com o ficheiro */
 	if (read_mode) {
-		matrix = readMatrix2dFromFile(matrixFile, N+2, N+2);
+		matrix = readMatrix2dFromFile(matrix_file, N+2, N+2);
 	}
 
 	/* Preenchendo a nossa matriz de acordo com os argumentos */
@@ -500,7 +501,7 @@ int main(int argc, char *argv[]) {
 	dm2dFree(matrix);
 	dm2dFree(matrix_aux);
 
-	fclose(matrixFile);
+	fclose(matrix_file);
 
 	return EXIT_SUCCESS;
 }
