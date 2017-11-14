@@ -426,8 +426,13 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
+	/* Preenchendo a nossa matriz de acordo com o ficheiro */
+	if (read_mode) {
+		matrix = readMatrix2dFromFile(matrixFile, N+2, N+2);
+	}
+
 	/* Preenchendo a nossa matriz de acordo com os argumentos */
-	if (!read_mode) {
+	if (matrix == NULL) {
 		matrix = dm2dNew(N+2, N+2);
 		if (is_arg_null(matrix, "Erro ao criar Matrix2d.")) {
 			return EXIT_FAILURE;
@@ -437,8 +442,6 @@ int main(int argc, char *argv[]) {
 		dm2dSetLineTo(matrix, N+1, t.inf);
 		dm2dSetColumnTo(matrix, 0, t.esq);
 		dm2dSetColumnTo(matrix, N+1, t.dir);
-	} else {
-		matrix = readMatrix2dFromFile(matrixFile, N+2, N+2);
 	}
 
 	dm2dCopy(matrix_aux, matrix);
