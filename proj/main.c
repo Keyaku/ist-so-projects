@@ -108,7 +108,7 @@ int barrier_deinit(barrier_t *barrier) {
 	return 0;
 }
 
-int barrier_wait(barrier_t *barrier, int id) {
+int barrier_wait(barrier_t *barrier) {
 	int retval = 0;
 
 	barrier->count++;
@@ -142,7 +142,6 @@ DoubleMatrix2D *simul(
 	int linhas,
 	int colunas,
 	int it,
-	int id,
 	double maxD
 ) {
 	DoubleMatrix2D *result = matrix;
@@ -165,7 +164,7 @@ DoubleMatrix2D *simul(
 
 		/* Monta a barreira para verificar se o maxD foi atingido */
 		lock_or_exit(&barrier.cond_mutex);
-		barrier_wait(&barrier, id);
+		barrier_wait(&barrier);
 
 		/* Verificamos se maxD foi atingido */
 		if (dm2dDelimited(matrix, matrix_aux, colunas, maxD)) {
@@ -174,7 +173,7 @@ DoubleMatrix2D *simul(
 		}
 
 		/* Monta a barreira para poder trocar os ponteiros das matrizes */
-		if (barrier_wait(&barrier, id)) {
+		if (barrier_wait(&barrier)) {
 			matrix_temp = matrix;
 			matrix = matrix_aux;
 			matrix_aux = matrix_temp;
@@ -216,7 +215,6 @@ void *slave_thread(void *arg) {
 		n_l,
 		n_c,
 		simul_arg->iter,
-		simul_arg->id,
 		simul_arg->maxD
 	);
 	if (is_arg_null(result, "result (thread)")) {
@@ -375,7 +373,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Começamos por inicializar as tarefas uma a uma */
-	size_t idx = 0;
+	int idx = 0;
 	for (int linha = 0; idx < trab; idx++, linha += k) {
 		slave_args[idx].id = idx+1;
 		slave_args[idx].first = linha;

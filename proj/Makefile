@@ -6,13 +6,13 @@ INCLUDE += -I$(SRCDIR)
 
 CC = gcc
 LD = $(CC)
-CFLAGS = -O0 -g -c -pedantic -Wall $(INCLUDE)
+CFLAGS = -O0 -g -c -pedantic -Wall -Wextra $(INCLUDE)
 
 ifneq ($(shell uname), Darwin)
 	LDFLAGS = -pthread
 endif
 
-ZIPFILE = ex3-g48.zip
+ZIPFILE = ex4-g48.zip
 EXECFILE ?= heatSim
 
 ################################################################################
