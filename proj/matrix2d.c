@@ -1,5 +1,5 @@
 /*
-// Bibliotece de matrizes 2D alocadas dinamicamente, versao 3
+// Biblioteca de matrizes 2D alocadas dinamicamente, versao 4
 // Sistemas Operativos, DEI/IST/ULisboa 2017-18
 */
 
@@ -68,9 +68,7 @@ void dm2dSetLine(DoubleMatrix2D *matrix, int line_nb, double* line_values) {
 ---------------------------------------------------------------------*/
 
 void dm2dSetLineTo(DoubleMatrix2D *matrix, int line, double value) {
-	int i;
-
-	for (i = 0; i < matrix->n_c; i++) {
+	for (int i = 0; i < matrix->n_c; i++) {
 		dm2dSetEntry(matrix, line, i, value);
 	}
 }
@@ -81,9 +79,7 @@ void dm2dSetLineTo(DoubleMatrix2D *matrix, int line, double value) {
 ---------------------------------------------------------------------*/
 
 void dm2dSetColumnTo(DoubleMatrix2D *matrix, int column, double value) {
-	int i;
-
-	for (i = 0; i < matrix->n_l; i++) {
+	for (int i = 0; i < matrix->n_l; i++) {
 		dm2dSetEntry(matrix, i, column, value);
 	}
 }
@@ -102,16 +98,15 @@ void dm2dCopy(DoubleMatrix2D *to, DoubleMatrix2D *from) {
 ---------------------------------------------------------------------*/
 
 void dm2dPrint(DoubleMatrix2D *matrix) {
-	int i, j;
-
 	printf ("\n");
-	for (i = 0; i < matrix->n_l; i++) {
-		for (j = 0; j < matrix->n_c; j++) {
+	for (int i = 0; i < matrix->n_l; i++) {
+		for (int j = 0; j < matrix->n_c; j++) {
 			printf(" %8.4f", dm2dGetEntry(matrix, i, j));
 		}
 		printf ("\n");
 	}
 }
+
 
 /*--------------------------------------------------------------------
 | Function: dm2dDelimited
@@ -140,3 +135,35 @@ int dm2dDelimited(DoubleMatrix2D *m, DoubleMatrix2D *m_aux, int n, double delimi
 }
 
 #undef max
+
+/*--------------------------------------------------------------------
+| Function: readMatrix2dFromFile
+---------------------------------------------------------------------*/
+DoubleMatrix2D *readMatrix2dFromFile(FILE *f, int l, int c) {
+	double v;
+	DoubleMatrix2D *m;
+
+	if (f == NULL || l < 1 || c < 1) {
+		return NULL;
+	}
+
+	m = dm2dNew(l, c);
+	if (m == NULL) {
+		return NULL;
+	}
+
+	// Ler pontos da matriz
+	// Nesta implementacao, ignora a existencia e posicionamento
+	// de quebras de linha
+	for (int i = 0; i < l; i++) {
+		for (int j = 0; j < c; j++) {
+			if (fscanf(f, "%lf", &v) != 1) {
+				dm2dFree(m);
+				return NULL;
+			}
+			dm2dSetEntry(m, i, j, v);
+		}
+	}
+
+	return m;
+}
