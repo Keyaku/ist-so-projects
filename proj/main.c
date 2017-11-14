@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 #include <pthread.h>
 
 #include "matrix2d.h"
@@ -306,6 +307,18 @@ FILE *open_or_create_new_matrix_file(const char* filename, int *read_mode) {
 	return f;
 }
 
+void close_matrix_file(FILE *f, const char *filename) {
+	if (f != NULL) {
+		fclose(f);
+	}
+	if (filename != NULL) {
+		if (unlink(filename)) {
+			fprintf(stderr, "Não foi possível remover \"%s\"\n", filename);
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
 /*--------------------------------------------------------------------
 | Function: Arguments checking
 | - is_arg_greater_equal_to(value, greater, name)
@@ -493,6 +506,8 @@ int main(int argc, char *argv[]) {
 	dm2dPrint(result);
 
 	/* Limpar estruturas */
+	close_matrix_file(matrix_file, fichS);
+
 	if (barrier_deinit(&barrier)) {
 		return EXIT_FAILURE;
 	}
@@ -500,8 +515,6 @@ int main(int argc, char *argv[]) {
 	free(slave_args);
 	dm2dFree(matrix);
 	dm2dFree(matrix_aux);
-
-	fclose(matrix_file);
 
 	return EXIT_SUCCESS;
 }
