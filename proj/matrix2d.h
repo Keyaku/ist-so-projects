@@ -21,9 +21,10 @@ void            dm2dSetLine(DoubleMatrix2D *matrix, int line_nb, double* line_va
 void            dm2dSetLineTo(DoubleMatrix2D *matrix, int line, double value);
 void            dm2dSetColumnTo(DoubleMatrix2D *matrix, int column, double value);
 void            dm2dPrint(DoubleMatrix2D *matrix);
+void            dm2dPrintStream(FILE*, DoubleMatrix2D *matrix);
 void            dm2dCopy(DoubleMatrix2D *to, DoubleMatrix2D *from);
 int             dm2dDelimited(DoubleMatrix2D *m, DoubleMatrix2D *m_aux, int n_c, double delimiter);
-DoubleMatrix2D *readMatrix2dFromFile(FILE *f, int l, int c);
+DoubleMatrix2D *readMatrix2dFromFile(FILE*, int l, int c);
 
 #define         dm2dGetEntry(m,l,c)    m->data[((l)*m->n_c)+(c)]
 #define         dm2dSetEntry(m,l,c,v)  m->data[((l)*m->n_c)+(c)]=v

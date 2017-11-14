@@ -94,17 +94,21 @@ void dm2dCopy(DoubleMatrix2D *to, DoubleMatrix2D *from) {
 
 
 /*--------------------------------------------------------------------
-| Function: dm2dPrint
+| Function: dm2dPrintStream & dm2dPrint
 ---------------------------------------------------------------------*/
 
-void dm2dPrint(DoubleMatrix2D *matrix) {
-	printf ("\n");
+void dm2dPrintStream(FILE *stream, DoubleMatrix2D *matrix) {
 	for (int i = 0; i < matrix->n_l; i++) {
 		for (int j = 0; j < matrix->n_c; j++) {
-			printf(" %8.4f", dm2dGetEntry(matrix, i, j));
+			fprintf(stream, " %8.4f", dm2dGetEntry(matrix, i, j));
 		}
-		printf ("\n");
+		fprintf(stream, "\n");
 	}
+}
+
+void dm2dPrint(DoubleMatrix2D *matrix) {
+	printf("\n");
+	dm2dPrintStream(stdout, matrix);
 }
 
 
