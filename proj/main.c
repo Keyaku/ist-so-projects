@@ -35,8 +35,9 @@ typedef struct barrier_t {
 /* Variáveis globais */
 barrier_t barrier;                   /* A nossa barreira */
 DoubleMatrix2D *matrix, *matrix_aux; /* As nossas duas matrizes */
-int periodoS;
-FILE *matrix_file;
+
+const char *fichS; /* Nome do ficheiro de salvaguarda */
+int periodoS;      /* Período de salvaguarda */
 
 /*--------------------------------------------------------------------
 | Helper functions
@@ -257,7 +258,7 @@ double parse_double_or_exit(const char *str, const char *name) {
 /*--------------------------------------------------------------------
 | Function: File handling
 | - file_exists()
-| - open_or_create_new_matrix_file()
+| - file_delete()
 ---------------------------------------------------------------------*/
 
 /* Material de manuseamento de ficheiros */
@@ -265,8 +266,11 @@ double parse_double_or_exit(const char *str, const char *name) {
 #define F_NOT_EXISTS 0
 #define F_ERROR -1
 
-int file_exists(FILE *f) {
+int file_exists(const char* filename) {
+	FILE *f = fopen(filename, "r");
+
 	if (f != NULL) {
+		fclose(f);
 		return F_EXISTS;
 	}
 	if (errno == ENOENT) {
@@ -275,46 +279,15 @@ int file_exists(FILE *f) {
 	return F_ERROR;
 }
 
-FILE *open_or_create_new_matrix_file(const char* filename, int *read_mode) {
-	FILE *f = fopen(filename, "r");
-
-	/* Check if file exists */
-	int state = file_exists(f);
-	if (state == F_EXISTS) {
-		/* close the stream and reopen it to read+write */
-		fclose(f);
-		f = fopen(filename, "r+");
-		/* if opening THIS stream caused an error, exit the program */
-		if (f == NULL) {
-			fprintf(stderr, "Não foi possível escrever sobre \"%s\"\n", filename);
-			return NULL;
-		}
-
-		*read_mode = 1;
-	} else if (state == F_ERROR) {
-		fprintf(stderr, "Não foi possível abrir \"%s\"\n", filename);
-		return NULL;
-	} else {
-		/* Opening stream for write-only */
-		f = fopen(filename, "w");
-		/* if opening THIS stream caused an error, exit the program */
-		if (f == NULL) {
-			fprintf(stderr, "Não foi possível escrever sobre \"%s\"\n", filename);
-			return NULL;
-		}
-	}
-
-	return f;
-}
-
-void close_matrix_file(FILE *f, const char *filename) {
-	if (f != NULL) {
-		fclose(f);
-	}
+void file_delete(const char *filename) {
 	if (filename != NULL) {
+		/* In case removing the file breaks */
 		if (unlink(filename)) {
-			fprintf(stderr, "Não foi possível remover \"%s\"\n", filename);
-			exit(EXIT_FAILURE);
+			if (errno != ENOENT) {
+				fprintf(stderr, "Não foi possível remover \"%s\"\n", filename);
+				exit(EXIT_FAILURE);
+			}
+			/* In any other case, we ignore it */
 		}
 	}
 }
@@ -385,13 +358,14 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Parsing other arguments */
-	int read_mode = 0;
-	const char* fichS = NULL;
-	matrix_file = NULL;
+	int state = 0;
+	fichS = NULL;
 	if (11 <= argc) {
 		/* Opening the file appropriately */
-		matrix_file = open_or_create_new_matrix_file(argv[10], &read_mode);
-		if (matrix_file != NULL) {
+		state = file_exists(argv[10]);
+		if (state == F_ERROR) {
+			fprintf(stderr, "Não foi possível verificar a existência de \"%s\"", argv[10]);
+		} else {
 			fichS = argv[10];
 		}
 	}
@@ -399,7 +373,8 @@ int main(int argc, char *argv[]) {
 	fprintf(stderr, "\nArgumentos:\n"
 		" N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d maxD=%.3f"
 		" fichS=%s periodoS=%d",
-		  N, t.esq, t.sup, t.dir, t.inf, iter, trab, csz, maxD, str_or_null(fichS), periodoS
+		  N,   t.esq,    t.sup,    t.dir,    t.inf,    iter,   trab,   csz,   maxD,
+		str_or_null(fichS), periodoS
 	);
 
 	/* VERIFICAR SE ARGUMENTOS ESTÃO CONFORME O ENUNCIADO */
@@ -442,8 +417,13 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Preenchendo a nossa matriz de acordo com o ficheiro */
-	if (read_mode) {
-		matrix = readMatrix2dFromFile(matrix_file, N+2, N+2);
+	if (fichS != NULL) {
+		FILE *matrix_file = fopen(fichS, "r");
+		if (matrix_file == NULL) {
+			fprintf(stderr, "Não foi possível abrir \"%s\"\n", fichS);
+		} else {
+			matrix = readMatrix2dFromFile(matrix_file, N+2, N+2);
+		}
 	}
 
 	/* Preenchendo a nossa matriz de acordo com os argumentos */
@@ -506,7 +486,7 @@ int main(int argc, char *argv[]) {
 	dm2dPrint(result);
 
 	/* Limpar estruturas */
-	close_matrix_file(matrix_file, fichS);
+	file_delete(fichS);
 
 	if (barrier_deinit(&barrier)) {
 		return EXIT_FAILURE;
