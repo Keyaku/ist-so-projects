@@ -185,10 +185,11 @@ DoubleMatrix2D *simul(
 			if (periodoS > 0) {
 				count_until_save++;
 				if (count_until_save >= periodoS) {
-					if (fork() == 0) {
+					pid_t save_child = fork();
+					if (save_child == 0) {
 						writeMatrix2dToFile(fichS, matrix);
 						exit(EXIT_SUCCESS);
-					} else {
+					} else if (save_child == -1) {
 						fprintf(stderr,
 							"Não foi possível criar processo-filho.\n"
 							"Não será salva-guardado esta vez.\n"
