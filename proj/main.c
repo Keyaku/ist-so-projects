@@ -417,7 +417,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Preenchendo a nossa matriz de acordo com o ficheiro */
-	if (fichS != NULL) {
+	if (fichS != NULL && state == F_EXISTS) {
 		FILE *matrix_file = fopen(fichS, "r");
 		if (matrix_file == NULL) {
 			fprintf(stderr, "Não foi possível abrir \"%s\"\n", fichS);
