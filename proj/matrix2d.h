@@ -25,6 +25,7 @@ void            dm2dPrintStream(FILE*, DoubleMatrix2D *matrix);
 void            dm2dCopy(DoubleMatrix2D *to, DoubleMatrix2D *from);
 int             dm2dDelimited(DoubleMatrix2D *m, DoubleMatrix2D *m_aux, int n_c, double delimiter);
 DoubleMatrix2D *readMatrix2dFromFile(FILE*, int l, int c);
+void            writeMatrix2dToFile(const char *filename, DoubleMatrix2D*);
 
 #define         dm2dGetEntry(m,l,c)    m->data[((l)*m->n_c)+(c)]
 #define         dm2dSetEntry(m,l,c,v)  m->data[((l)*m->n_c)+(c)]=v

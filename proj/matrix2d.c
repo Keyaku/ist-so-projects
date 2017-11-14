@@ -141,7 +141,7 @@ int dm2dDelimited(DoubleMatrix2D *m, DoubleMatrix2D *m_aux, int n, double delimi
 #undef max
 
 /*--------------------------------------------------------------------
-| Function: readMatrix2dFromFile
+| Function: readMatrix2dFromFile & writeMatrix2dToFile
 ---------------------------------------------------------------------*/
 DoubleMatrix2D *readMatrix2dFromFile(FILE *f, int l, int c) {
 	double v;
@@ -170,4 +170,22 @@ DoubleMatrix2D *readMatrix2dFromFile(FILE *f, int l, int c) {
 	}
 
 	return m;
+}
+
+void writeMatrix2dToFile(const char *filename, DoubleMatrix2D *matrix) {
+	/* Discarding old file and saving new matrix */
+	FILE *f = fopen(filename, "w");
+	if (f == NULL) {
+		fprintf(stderr, "Não foi possível escrever sobre \"%s\"\n", filename);
+		exit(EXIT_FAILURE);
+	}
+
+	fprintf(stderr, "Writing to file...\n"); // FIXME: remove this line
+	dm2dPrintStream(f, matrix);
+
+	/* Closing stream */
+	if (fclose(f)) {
+		fprintf(stderr, "Não foi possível fechar o ficheiro\"%s\"\n", filename);
+		exit(EXIT_FAILURE);
+	}
 }
