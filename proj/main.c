@@ -34,6 +34,7 @@ typedef struct barrier_t {
 /* Variáveis globais */
 barrier_t barrier;                   /* A nossa barreira */
 DoubleMatrix2D *matrix, *matrix_aux; /* As nossas duas matrizes */
+int periodoS;
 
 /*--------------------------------------------------------------------
 | Helper functions
@@ -280,7 +281,7 @@ FILE *open_or_create_new_matrix_file(const char* filename, int *read_mode) {
 	if (state == F_EXISTS) {
 		/* close the stream and reopen it to read+write */
 		fclose(f);
-		f = fopen(filename, "rw");
+		f = fopen(filename, "r+");
 		/* if opening THIS stream caused an error, exit the program */
 		if (f == NULL) {
 			fprintf(stderr, "Não foi possível escrever sobre \"%s\"\n", filename);
@@ -349,7 +350,7 @@ int main(int argc, char *argv[]) {
 	int iter     = parse_integer_or_exit(argv[6], "iter");
 	int trab     = 1;
 	int csz      = 0;
-	int periodoS = 0;
+	periodoS     = 0;
 	if (8 <= argc) {
 		trab     = parse_integer_or_exit(argv[7], "trab");
 		csz      = parse_integer_or_exit(argv[8], "csz");
