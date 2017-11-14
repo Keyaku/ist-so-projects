@@ -152,6 +152,7 @@ DoubleMatrix2D *simul(
 ) {
 	DoubleMatrix2D *result = matrix;
 	DoubleMatrix2D *matrix_temp = NULL;
+	int count_until_save = 0;
 
 	while (it-- > 0) {
 		/* Processamos uma iteração */
@@ -180,6 +181,26 @@ DoubleMatrix2D *simul(
 
 		/* Monta a barreira para poder trocar os ponteiros das matrizes */
 		if (barrier_wait(&barrier)) {
+			/* Contar iterações até à próxima salvaguarda */
+			if (periodoS > 0) {
+				count_until_save++;
+				if (count_until_save >= periodoS) {
+					if (fork() == 0) {
+						writeMatrix2dToFile(fichS, matrix);
+						exit(EXIT_SUCCESS);
+					} else {
+						fprintf(stderr,
+							"Não foi possível criar processo-filho.\n"
+							"Não será salva-guardado esta vez.\n"
+						);
+					}
+
+					/* Reiniciar contador */
+					count_until_save = 0;
+				}
+			}
+
+			/* Efectuar troca de ponteiros */
 			matrix_temp = matrix;
 			matrix = matrix_aux;
 			matrix_aux = matrix_temp;
@@ -260,7 +281,6 @@ double parse_double_or_exit(const char *str, const char *name) {
 | - file_exists()
 | - file_delete()
 ---------------------------------------------------------------------*/
-
 /* Material de manuseamento de ficheiros */
 #define F_EXISTS 1
 #define F_NOT_EXISTS 0
