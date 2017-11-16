@@ -6,7 +6,7 @@
 
 /* "Private" material */
 // General
-#define test_signal(a, sig) { \
+#define test_signal(sig, a) { \
 	if (a != sig) { \
 		fprintf(stderr, "Signal other than "#sig" was deployed.\n"); \
 		exit(EXIT_FAILURE); \
@@ -23,7 +23,7 @@ void link_signal(int signum, void (*handler)(int)) {
 // SIGINT
 int interrupted;
 void manage_interrupt(int signum) {
-	test_signal(signum, SIGINT);
+	test_signal(SIGINT, signum);
 
 	// FIXME: reset SIGINT necessary?
 	interrupted = 1;
