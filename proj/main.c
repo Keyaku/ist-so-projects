@@ -71,7 +71,7 @@ void unlock_or_exit(pthread_mutex_t *mutex) {
 /* Helpers for child process */
 void wait_properly() {
 	int wstatus = 0;
-	waitpid(-1, &wstatus, WNOHANG);
+	waitpid(-1, &wstatus, 0); // FIXME: use WNOHANG
 	if (!WIFEXITED(wstatus)) {
 		fprintf(stderr, "Processo filho de salvaguarda não terminou correctamente\n");
 	}
