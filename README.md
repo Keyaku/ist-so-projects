@@ -23,6 +23,6 @@ For signal-related content, check the following pages from the book:
 - 6.7 Monitores - 274
 
 #### Miscellaneous
-* [ ] Use `WNOHANG` in `waitpid()` and fix all dependent issues.
+* [x] Use `WNOHANG` in `waitpid()` and fix all dependent issues.
 * [ ] Experiment (read notes from paper).
 * [ ] Check with teacher.
