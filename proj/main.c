@@ -11,6 +11,7 @@
 
 #include "files.h"
 #include "barrier.h"
+#include "signals.h"
 #include "matrix2d.h"
 
 
@@ -91,10 +92,6 @@ void safe_write_matrix() {
 }
 
 void clean_globals() {
-	/* Apagar ficheiros temporários */
-	wait_properly();
-
-	file_delete(fichS);
 	free(fichS_temp);
 
 	/* Libertar a barreira */
@@ -121,7 +118,7 @@ DoubleMatrix2D *simul(
 	DoubleMatrix2D *matrix_temp = NULL;
 	int count_until_save = 0;
 
-	while (it-- > 0) {
+	while (it-- > 0 && !signals_was_interrupted()) {
 		/* Processamos uma iteração */
 		for (int i = first+1; i < linhas-1; i++) {
 			for (int j = 1; j < colunas-1; j++) {
@@ -374,7 +371,10 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	/* Inicializamos o nosso material mutlithreading */
+	/* Inicializamos os sinais a usar */
+	signals_init();
+
+	/* Inicializamos o nosso material multithreading */
 	if (barrier_init(&barrier, trab)) {
 		return EXIT_FAILURE;
 	}
@@ -447,12 +447,21 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	/* Esperar por qualquer processo-filho uma última vez */
+	wait_properly();
+
+	/* Mostramos o resultado */
 	if (is_arg_null(result, "result")) {
 		return EXIT_FAILURE;
 	}
-
-	/* Mostramos o resultado */
 	dm2dPrint(result);
+
+	/* Salvaguardar em caso de Interrupção; apagar caso contrário */
+	if (signals_was_interrupted()) {
+		safe_write_matrix();
+	} else {
+		file_delete(fichS);
+	}
 
 	/* Limpar estruturas */
 	clean_globals();
