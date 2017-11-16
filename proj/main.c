@@ -68,6 +68,17 @@ void unlock_or_exit(pthread_mutex_t *mutex) {
 	}
 }
 
+/* Helpers for child process */
+void wait_properly() {
+	int wstatus = 0;
+	waitpid(-1, &wstatus, WNOHANG);
+	if (!WIFEXITED(wstatus)) {
+		fprintf(stderr, "Processo filho de salvaguarda não terminou correctamente\n");
+	}
+	// FIXME: add more wstatus checks?
+}
+
+
 // FIXME: Is this enough?
 void safe_write_matrix() {
 	/* Saving to temporary file */
@@ -81,11 +92,7 @@ void safe_write_matrix() {
 
 void clean_globals() {
 	/* Apagar ficheiros temporários */
-	int wstatus;
-	wait(&wstatus);
-	if (!WIFEXITED(wstatus)) {
-		fprintf(stderr, "Processo filho de salvaguarda não terminou correctamente\n");
-	}
+	wait_properly();
 
 	file_delete(fichS);
 	free(fichS_temp);
@@ -147,12 +154,7 @@ DoubleMatrix2D *simul(
 
 				if (count_until_save >= periodoS) {
 					/* Esperar pelo filho anterior antes de continuar */
-					int wstatus;
-					wait(&wstatus);
-					if (!WIFEXITED(wstatus)) {
-						fprintf(stderr, "Processo filho de salvaguarda não terminou correctamente\n");
-					}
-					// FIXME: Add other checks? WIFSIGNALED() or other
+					wait_properly();
 
 					/* Lançar novo processo salvaguarda */
 					pid_t save_child = fork();
@@ -334,7 +336,6 @@ int main(int argc, char *argv[]) {
 			/* Composing temporary filename */
 			strcpy(fichS_temp, fichS);
 			fichS_temp[len] = '~'; fichS_temp[len+1] = 0;
-			fprintf(stderr, "%s\n", fichS_temp); // FIXME: remove this
 		}
 	}
 

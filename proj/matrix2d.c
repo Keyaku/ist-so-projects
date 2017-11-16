@@ -180,7 +180,6 @@ void writeMatrix2dToFile(const char *filename, DoubleMatrix2D *matrix) {
 		exit(EXIT_FAILURE);
 	}
 
-	fprintf(stderr, "Writing to file...\n"); // FIXME: remove this line
 	dm2dPrintStream(f, matrix);
 
 	/* Closing stream */
