@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <pthread.h>
 
@@ -31,6 +32,7 @@ barrier_t barrier;                   /* A nossa barreira */
 DoubleMatrix2D *matrix, *matrix_aux; /* As nossas duas matrizes */
 
 const char *fichS; /* Nome do ficheiro de salvaguarda */
+char *fichS_temp;  /* Nome do ficheiro de salvaguarda temporário */
 int periodoS;      /* Período de salvaguarda */
 
 /*--------------------------------------------------------------------
@@ -69,11 +71,19 @@ void unlock_or_exit(pthread_mutex_t *mutex) {
 // FIXME: Is this enough?
 void safe_write_matrix() {
 	/* Saving to temporary file */
-	writeMatrix2dToFile(fichS, matrix);
+	writeMatrix2dToFile(fichS_temp, matrix);
+
+	/* Renaming to proper filename */
+	if (file_exists(fichS_temp) == F_EXISTS) {
+		if (rename(fichS_temp, fichS)) {
+			fprintf(stderr, "Não foi possível rescrever ficheiro temporário de \"%s\"\n", fichS_temp);
+		}
+	}
 }
 
 void clean_globals() {
 	file_delete(fichS);
+	free(fichS_temp);
 
 	if (barrier_deinit(&barrier)) {
 		exit(EXIT_FAILURE);
@@ -289,6 +299,7 @@ int main(int argc, char *argv[]) {
 	/* Parsing other arguments */
 	int state = 0;
 	fichS = NULL;
+	fichS_temp = NULL;
 	if (11 <= argc) {
 		/* Opening the file appropriately */
 		state = file_exists(argv[10]);
@@ -296,6 +307,18 @@ int main(int argc, char *argv[]) {
 			fprintf(stderr, "Não foi possível verificar a existência de \"%s\"", argv[10]);
 		} else {
 			fichS = argv[10];
+			size_t len = strlen(fichS);
+
+			fichS_temp = malloc(len + 2);
+			if (fichS_temp == NULL) {
+				fprintf(stderr, "Erro ao alocar memória para \"%s\"\n", fichS);
+				return EXIT_FAILURE;
+			}
+
+			/* Composing temporary filename */
+			strcpy(fichS_temp, fichS);
+			fichS_temp[len] = '~'; fichS_temp[len+1] = 0;
+			fprintf(stderr, "%s\n", fichS_temp); // FIXME: remove this
 		}
 	}
 
