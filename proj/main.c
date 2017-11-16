@@ -79,8 +79,7 @@ void wait_properly() {
 	// FIXME: add more wstatus checks?
 }
 
-
-// FIXME: Is this enough?
+/* Slightly safer approach to writing matrix to a file: writes to temporary first. */
 void safe_write_matrix() {
 	/* Saving to temporary file */
 	writeMatrix2dToFile(fichS_temp, matrix);
@@ -116,7 +115,6 @@ DoubleMatrix2D *simul(
 ) {
 	DoubleMatrix2D *result = matrix;
 	DoubleMatrix2D *matrix_temp = NULL;
-	int count_until_save = 0;
 
 	while (it-- > 0 && !signals_was_interrupted()) {
 		/* Processamos uma iteração */
@@ -145,29 +143,25 @@ DoubleMatrix2D *simul(
 
 		/* Monta a barreira para poder trocar os ponteiros das matrizes */
 		if (barrier_wait(&barrier)) {
-			/* Contar iterações até à próxima salvaguarda */
-			if (periodoS > 0) {
-				count_until_save++;
+			/* Verificar a próxima salvaguarda */
+			if (signals_was_alarmed()) {
+				/* Esperar pelo filho anterior antes de continuar */
+				wait_properly();
 
-				if (count_until_save >= periodoS) {
-					/* Esperar pelo filho anterior antes de continuar */
-					wait_properly();
-
-					/* Lançar novo processo salvaguarda */
-					pid_t save_child = fork();
-					if (save_child == 0) {
-						safe_write_matrix();
-						exit(EXIT_SUCCESS);
-					} else if (save_child == -1) {
-						fprintf(stderr,
-							"Não foi possível criar processo filho.\n"
-							"Não será salva-guardado esta vez.\n"
-						);
-					}
-
-					/* Reiniciar contador */
-					count_until_save = 0;
+				/* Lançar novo processo salvaguarda */
+				pid_t save_child = fork();
+				if (save_child == 0) {
+					safe_write_matrix();
+					exit(EXIT_SUCCESS);
+				} else if (save_child == -1) {
+					fprintf(stderr,
+						"Não foi possível criar processo filho.\n"
+						"Não será salva-guardado esta vez.\n"
+					);
 				}
+
+				/* Reiniciar contador */
+				signals_reset_alarm(periodoS);
 			}
 
 			/* Efectuar troca de ponteiros */
@@ -338,7 +332,8 @@ int main(int argc, char *argv[]) {
 
 	fprintf(stderr, "\nArgumentos:\n"
 		" N=%d tEsq=%.1f tSup=%.1f tDir=%.1f tInf=%.1f iter=%d trab=%d csz=%d maxD=%.3f"
-		" fichS=%s periodoS=%d",
+		" fichS=%s periodoS=%d"
+		"\n",
 		  N,   t.esq,    t.sup,    t.dir,    t.inf,    iter,   trab,   csz,   maxD,
 		str_or_null(fichS), periodoS
 	);
@@ -372,7 +367,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Inicializamos os sinais a usar */
-	signals_init();
+	signals_init(periodoS);
 
 	/* Inicializamos o nosso material multithreading */
 	if (barrier_init(&barrier, trab)) {

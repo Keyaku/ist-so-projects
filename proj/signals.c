@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "signals.h"
 
-/* "Private" material */
+/*--------------------------------------------------------------------
+| Private functions
+---------------------------------------------------------------------*/
 // General
 #define test_signal(sig, a) { \
 	if (a != sig) { \
@@ -30,18 +33,38 @@ void manage_interrupt(int signum) {
 }
 
 // SIGALRM
-// TODO
+int alarm_interval;
+int alarmed;
+void manage_alarm(int signum) {
+	test_signal(SIGALRM, signum);
+	alarmed = 1;
+}
 
-/* Public functions */
-void signals_init() {
+/*--------------------------------------------------------------------
+| Public functions
+---------------------------------------------------------------------*/
+void signals_init(int interval) {
 	/* Inicializar o sinal de interrupção SIGINT */
 	interrupted = 0;
 	link_signal(SIGINT, manage_interrupt);
 
 	/* Inicializar o sinal de alarme SIGALRM */
-	// TODO
+	if (interval > 0) {
+		signals_reset_alarm(interval);
+	}
 }
 
 int signals_was_interrupted() {
 	return interrupted;
+}
+
+int signals_was_alarmed() {
+	return alarmed;
+}
+
+void signals_reset_alarm(int interval) {
+	alarmed = 0;
+	alarm_interval = interval;
+	link_signal(SIGALRM, manage_alarm);
+	alarm(interval);
 }

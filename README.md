@@ -13,7 +13,7 @@
 #### Advanced Requirements
 * [x] Write matrix between `periodoS` to file in a temporary file before renaming it back to the official name.
 * [x] Make use of `waitpid(pid, &wstatus, WNOHANG)` before launching a new child process to avoid concurrent writing to file..
-* [ ] Have `periodoS` an interval in seconds between saves, instead of iterations.
+* [x] Have `periodoS` an interval in seconds between saves, instead of iterations.
 * [x] Save matrix to file when a CTRL-C (or _SIGINT_) has been issued.
 * [ ] _SIGINT_ is signaled to a child process as well, so it should be redefined in that child.
 
