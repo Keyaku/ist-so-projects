@@ -5,10 +5,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
 
+#include "files.h"
+#include "barrier.h"
 #include "matrix2d.h"
 
 
@@ -24,13 +25,6 @@ typedef struct simul_args_t {
 	double maxD; /* Limiar de travagem */
 } simul_args_t;
 void *slave_thread(void *arg);
-
-/* Material de concorrência */
-typedef struct barrier_t {
-	pthread_mutex_t cond_mutex;
-	pthread_cond_t wait_for_iteration;
-	size_t size, count;
-} barrier_t;
 
 /* Variáveis globais */
 barrier_t barrier;                   /* A nossa barreira */
@@ -72,72 +66,21 @@ void unlock_or_exit(pthread_mutex_t *mutex) {
 	}
 }
 
-/*--------------------------------------------------------------------
-| Functions: Initializing and cleaning multithreading material
-| - barrier_init(barrier, size)
-|   | Initializes given barrier with given size
-|
-| - barrier_deinit(barrier)
-|   | Destroys given barrier
-|
-| - barrier_wait(barrier, tid)
-|   | Waits with given barrier.
-|   | returns true (1) if all threads were unlocked, false (0) otherwise
----------------------------------------------------------------------*/
-int barrier_init(barrier_t *barrier, size_t size) {
-	if (pthread_mutex_init(&barrier->cond_mutex, NULL)) {
-		fprintf(stderr, "\nErro ao inicializar wait_mutex\n");
-		return 1;
-	}
-
-	if (pthread_cond_init(&barrier->wait_for_iteration, NULL)) {
-		fprintf(stderr, "\nErro ao inicializar variável de condição\n");
-		return 2;
-	}
-
-	barrier->size = size;
-	barrier->count = 0;
-	return 0;
+// FIXME: Is this enough?
+void safe_write_matrix() {
+	/* Saving to temporary file */
+	writeMatrix2dToFile(fichS, matrix);
 }
 
-int barrier_deinit(barrier_t *barrier) {
-	if (pthread_mutex_destroy(&barrier->cond_mutex)) {
-		fprintf(stderr, "\nErro ao inicializar wait_mutex\n");
-		return 1;
+void clean_globals() {
+	file_delete(fichS);
+
+	if (barrier_deinit(&barrier)) {
+		exit(EXIT_FAILURE);
 	}
 
-	if (pthread_cond_destroy(&barrier->wait_for_iteration)) {
-		fprintf(stderr, "\nErro ao destruir variável de condição\n");
-		return 2;
-	}
-
-	return 0;
-}
-
-int barrier_wait(barrier_t *barrier) {
-	int retval = 0;
-
-	barrier->count++;
-
-	/* Se o contador for inferior ao tamanho, bloquear thread */
-	if (barrier->count < barrier->size) {
-		if (pthread_cond_wait(&barrier->wait_for_iteration, &barrier->cond_mutex)) {
-			fprintf(stderr, "\nErro ao esperar pela variável de condição\n");
-			exit(EXIT_FAILURE);
-		}
-	}
-	/* Caso contrário, desbloqueia todas as threads */
-	else {
-		barrier->count = 0;
-		if (pthread_cond_broadcast(&barrier->wait_for_iteration)) {
-			fprintf(stderr, "\nErro ao desbloquear variável de condição\n");
-			exit(EXIT_FAILURE);
-		}
-
-		retval = 1;
-	}
-
-	return retval;
+	dm2dFree(matrix);
+	dm2dFree(matrix_aux);
 }
 
 /*--------------------------------------------------------------------
@@ -184,10 +127,11 @@ DoubleMatrix2D *simul(
 			/* Contar iterações até à próxima salvaguarda */
 			if (periodoS > 0) {
 				count_until_save++;
+
 				if (count_until_save >= periodoS) {
 					pid_t save_child = fork();
 					if (save_child == 0) {
-						writeMatrix2dToFile(fichS, matrix);
+						safe_write_matrix();
 						exit(EXIT_SUCCESS);
 					} else if (save_child == -1) {
 						fprintf(stderr,
@@ -275,42 +219,6 @@ double parse_double_or_exit(const char *str, const char *name) {
 		exit(1);
 	}
 	return value;
-}
-
-/*--------------------------------------------------------------------
-| Function: File handling
-| - file_exists()
-| - file_delete()
----------------------------------------------------------------------*/
-/* Material de manuseamento de ficheiros */
-#define F_EXISTS 1
-#define F_NOT_EXISTS 0
-#define F_ERROR -1
-
-int file_exists(const char* filename) {
-	FILE *f = fopen(filename, "r");
-
-	if (f != NULL) {
-		fclose(f);
-		return F_EXISTS;
-	}
-	if (errno == ENOENT) {
-		return F_NOT_EXISTS;
-	}
-	return F_ERROR;
-}
-
-void file_delete(const char *filename) {
-	if (filename != NULL) {
-		/* In case removing the file breaks */
-		if (unlink(filename)) {
-			if (errno != ENOENT) {
-				fprintf(stderr, "Não foi possível remover \"%s\"\n", filename);
-				exit(EXIT_FAILURE);
-			}
-			/* In any other case, we ignore it */
-		}
-	}
 }
 
 /*--------------------------------------------------------------------
@@ -507,15 +415,9 @@ int main(int argc, char *argv[]) {
 	dm2dPrint(result);
 
 	/* Limpar estruturas */
-	file_delete(fichS);
-
-	if (barrier_deinit(&barrier)) {
-		return EXIT_FAILURE;
-	}
+	clean_globals();
 	free(slaves);
 	free(slave_args);
-	dm2dFree(matrix);
-	dm2dFree(matrix_aux);
 
 	return EXIT_SUCCESS;
 }
