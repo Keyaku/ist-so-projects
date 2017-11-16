@@ -74,21 +74,28 @@ void safe_write_matrix() {
 	writeMatrix2dToFile(fichS_temp, matrix);
 
 	/* Renaming to proper filename */
-	if (file_exists(fichS_temp) == F_EXISTS) {
-		if (rename(fichS_temp, fichS)) {
-			fprintf(stderr, "Não foi possível rescrever ficheiro temporário de \"%s\"\n", fichS_temp);
-		}
+	if (rename(fichS_temp, fichS)) {
+		fprintf(stderr, "Não foi possível rescrever ficheiro temporário de \"%s\"\n", fichS_temp);
 	}
 }
 
 void clean_globals() {
+	/* Apagar ficheiros temporários */
+	int wstatus;
+	wait(&wstatus);
+	if (!WIFEXITED(wstatus)) {
+		fprintf(stderr, "Processo filho de salvaguarda não terminou correctamente\n");
+	}
+
 	file_delete(fichS);
 	free(fichS_temp);
 
+	/* Libertar a barreira */
 	if (barrier_deinit(&barrier)) {
 		exit(EXIT_FAILURE);
 	}
 
+	/* Libertar matrizes */
 	dm2dFree(matrix);
 	dm2dFree(matrix_aux);
 }
@@ -139,13 +146,22 @@ DoubleMatrix2D *simul(
 				count_until_save++;
 
 				if (count_until_save >= periodoS) {
+					/* Esperar pelo filho anterior antes de continuar */
+					int wstatus;
+					wait(&wstatus);
+					if (!WIFEXITED(wstatus)) {
+						fprintf(stderr, "Processo filho de salvaguarda não terminou correctamente\n");
+					}
+					// FIXME: Add other checks? WIFSIGNALED() or other
+
+					/* Lançar novo processo salvaguarda */
 					pid_t save_child = fork();
 					if (save_child == 0) {
 						safe_write_matrix();
 						exit(EXIT_SUCCESS);
 					} else if (save_child == -1) {
 						fprintf(stderr,
-							"Não foi possível criar processo-filho.\n"
+							"Não foi possível criar processo filho.\n"
 							"Não será salva-guardado esta vez.\n"
 						);
 					}
