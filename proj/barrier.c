@@ -34,7 +34,7 @@ int barrier_init(barrier_t *barrier, size_t size) {
 
 int barrier_deinit(barrier_t *barrier) {
 	if (pthread_mutex_destroy(&barrier->cond_mutex)) {
-		fprintf(stderr, "\nErro ao inicializar wait_mutex\n");
+		fprintf(stderr, "\nErro ao destruir wait_mutex\n");
 		return 1;
 	}
 
