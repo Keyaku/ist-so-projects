@@ -6,7 +6,7 @@ INCLUDE += -I$(SRCDIR)
 
 CC = gcc
 LD = $(CC)
-CFLAGS = -O0 -g -c -pedantic -Wall -Wextra $(INCLUDE)
+CFLAGS = -O0 -g -c -std=gnu99 -pedantic -Wall -Wextra $(INCLUDE)
 
 ifneq ($(shell uname), Darwin)
 	LDFLAGS = -pthread
