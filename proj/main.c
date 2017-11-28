@@ -34,7 +34,6 @@ DoubleMatrix2D *matrix, *matrix_aux; /* As nossas duas matrizes */
 
 const char *fichS; /* Nome do ficheiro de salvaguarda */
 char *fichS_temp;  /* Nome do ficheiro de salvaguarda temporário */
-int periodoS;      /* Período de salvaguarda */
 
 /*--------------------------------------------------------------------
 | Helper functions
@@ -48,19 +47,6 @@ void safe_write_matrix() {
 	if (rename(fichS_temp, fichS)) {
 		fprintf(stderr, "Não foi possível rescrever ficheiro temporário de \"%s\"\n", fichS_temp);
 	}
-}
-
-void clean_globals() {
-	free(fichS_temp);
-
-	/* Libertar a barreira */
-	if (barrier_deinit(&barrier)) {
-		exit(EXIT_FAILURE);
-	}
-
-	/* Libertar matrizes */
-	dm2dFree(matrix);
-	dm2dFree(matrix_aux);
 }
 
 /*--------------------------------------------------------------------
@@ -106,7 +92,7 @@ DoubleMatrix2D *simul(
 			/* Verificar a próxima salvaguarda */
 			if (signals_was_alarmed()) {
 				/* Esperar pelo filho anterior antes de continuar */
-				wait_properly(WNOHANG);
+				wait_properly(-1, WNOHANG); // FIXME: use previously-saved childpid
 
 				/* Lançar novo processo salvaguarda */
 				pid_t save_child = fork();
@@ -121,7 +107,7 @@ DoubleMatrix2D *simul(
 				}
 
 				/* Reiniciar contador */
-				signals_reset_alarm(periodoS);
+				signals_reset_alarm();
 			}
 
 			/* Efectuar troca de ponteiros */
@@ -245,7 +231,7 @@ int main(int argc, char *argv[]) {
 	int iter     = parse_integer_or_exit(argv[6], "iter");
 	int trab     = 1;
 	int csz      = 0;
-	periodoS     = 0;
+	int periodoS = 0;
 	if (8 <= argc) {
 		trab     = parse_integer_or_exit(argv[7], "trab");
 		csz      = parse_integer_or_exit(argv[8], "csz");
@@ -326,8 +312,8 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	/* Inicializamos os sinais a usar */
-	signals_init(periodoS);
+	/* Bloqueamos o conjunto de sinais */
+	signals_block();
 
 	/* Inicializamos o nosso material multithreading */
 	if (barrier_init(&barrier, trab)) {
@@ -394,6 +380,10 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	/* Desbloqueamos o conjunto de sinais e inicializamo-los */
+	signals_unblock();
+	signals_init(periodoS);
+
 	/* "Juntar" tarefas trabalhadoras */
 	for (idx = 0; idx < trab; idx++) {
 		if (pthread_join(slaves[idx], NULL)) {
@@ -403,7 +393,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Esperar por qualquer processo-filho uma última vez */
-	wait_properly(0);
+	wait_properly(-1, 0);
 
 	/* Mostramos o resultado */
 	if (is_arg_null(result, "result")) {
@@ -418,10 +408,22 @@ int main(int argc, char *argv[]) {
 		file_delete(fichS);
 	}
 
-	/* Limpar estruturas */
-	clean_globals();
+	/* Limpar estruturas locais */
 	free(slaves);
 	free(slave_args);
+
+	{ /* Limpar as globais */
+		free(fichS_temp);
+
+		/* Libertar a barreira */
+		if (barrier_deinit(&barrier)) {
+			exit(EXIT_FAILURE);
+		}
+
+		/* Libertar matrizes */
+		dm2dFree(matrix);
+		dm2dFree(matrix_aux);
+	}
 
 	return EXIT_SUCCESS;
 }

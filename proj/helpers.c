@@ -15,9 +15,9 @@ double average(double *array, size_t size) {
 }
 
 /* Helpers for child process */
-void wait_properly(int flags) {
+void wait_properly(pid_t pid, int flags) {
 	int wstatus = 0;
-	waitpid(-1, &wstatus, flags);
+	waitpid(pid, &wstatus, flags);
 	if (!WIFEXITED(wstatus)) {
 		fprintf(stderr, "Processo filho não terminou correctamente\n");
 	}
