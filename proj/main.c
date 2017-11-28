@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
 
+#include "helpers.h"
 #include "files.h"
 #include "barrier.h"
 #include "signals.h"
@@ -39,31 +39,6 @@ int periodoS;      /* Período de salvaguarda */
 /*--------------------------------------------------------------------
 | Helper functions
 ---------------------------------------------------------------------*/
-double average(double *array, size_t size) {
-	double result = 0;
-
-	for (size_t idx = 0; idx < size; idx++) {
-		result += array[idx];
-	}
-
-	return result / size;
-}
-
-#define array_len(arr) sizeof arr / sizeof *arr
-#define max(a, b) a < b ? b : a
-
-#define str_or_null(a) a ? a : "null"
-
-/* Helpers for child process */
-void wait_properly() {
-	int wstatus = 0;
-	waitpid(-1, &wstatus, WNOHANG);
-	if (!WIFEXITED(wstatus)) {
-		fprintf(stderr, "Processo filho de salvaguarda não terminou correctamente\n");
-	}
-	// FIXME: add more wstatus checks?
-}
-
 /* Slightly safer approach to writing matrix to a file: writes to temporary first. */
 void safe_write_matrix() {
 	/* Saving to temporary file */
@@ -131,7 +106,7 @@ DoubleMatrix2D *simul(
 			/* Verificar a próxima salvaguarda */
 			if (signals_was_alarmed()) {
 				/* Esperar pelo filho anterior antes de continuar */
-				wait_properly();
+				wait_properly(WNOHANG);
 
 				/* Lançar novo processo salvaguarda */
 				pid_t save_child = fork();
@@ -428,7 +403,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Esperar por qualquer processo-filho uma última vez */
-	wait_properly();
+	wait_properly(0);
 
 	/* Mostramos o resultado */
 	if (is_arg_null(result, "result")) {

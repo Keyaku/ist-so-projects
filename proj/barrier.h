@@ -1,6 +1,9 @@
 #ifndef BARRIER_H
 #define BARRIER_H
 
+
+#include <pthread.h>
+
 /* Material de concorrência */
 typedef struct barrier_t {
 	pthread_mutex_t cond_mutex;
