@@ -10,6 +10,8 @@ typedef struct barrier_t {
 
 int barrier_init(barrier_t*, size_t);
 int barrier_deinit(barrier_t*);
+void barrier_lock(barrier_t*);
+void barrier_unlock(barrier_t*);
 int barrier_wait(barrier_t*);
 
 #endif // BARRIER_H

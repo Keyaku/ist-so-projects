@@ -54,21 +54,6 @@ double average(double *array, size_t size) {
 
 #define str_or_null(a) a ? a : "null"
 
-/* Helpers for (un)locking mutexes */
-void lock_or_exit(pthread_mutex_t *mutex) {
-	if (pthread_mutex_lock(mutex)) {
-		fprintf(stderr, "\nErro ao bloquear mutex\n");
-		exit(EXIT_FAILURE);
-	}
-}
-
-void unlock_or_exit(pthread_mutex_t *mutex) {
-	if (pthread_mutex_unlock(mutex)) {
-		fprintf(stderr, "\nErro ao desbloquear mutex\n");
-		exit(EXIT_FAILURE);
-	}
-}
-
 /* Helpers for child process */
 void wait_properly() {
 	int wstatus = 0;
@@ -132,12 +117,12 @@ DoubleMatrix2D *simul(
 		}
 
 		/* Monta a barreira para verificar se o maxD foi atingido */
-		lock_or_exit(&barrier.cond_mutex);
+		barrier_lock(&barrier);
 		barrier_wait(&barrier);
 
 		/* Verificamos se maxD foi atingido */
 		if (dm2dDelimited(matrix, matrix_aux, colunas, maxD)) {
-			unlock_or_exit(&barrier.cond_mutex);
+			barrier_unlock(&barrier);
 			break;
 		}
 
@@ -169,7 +154,7 @@ DoubleMatrix2D *simul(
 			matrix = matrix_aux;
 			matrix_aux = matrix_temp;
 		}
-		unlock_or_exit(&barrier.cond_mutex);
+		barrier_unlock(&barrier);
 	}
 
 	/* Se houve uma confusão de pointers, resolvemos o de matrix_aux */

@@ -4,6 +4,22 @@
 
 #include "barrier.h"
 
+
+/* Helpers for (un)locking mutexes */
+void lock_or_exit(pthread_mutex_t *mutex) {
+	if (pthread_mutex_lock(mutex)) {
+		fprintf(stderr, "\nErro ao bloquear mutex\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+void unlock_or_exit(pthread_mutex_t *mutex) {
+	if (pthread_mutex_unlock(mutex)) {
+		fprintf(stderr, "\nErro ao desbloquear mutex\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 /*--------------------------------------------------------------------
 | Functions: Initializing and cleaning multithreading material
 | - barrier_init(barrier, size)
@@ -44,6 +60,14 @@ int barrier_deinit(barrier_t *barrier) {
 	}
 
 	return 0;
+}
+
+void barrier_lock(barrier_t *barrier) {
+	lock_or_exit(&barrier->cond_mutex);
+}
+
+void barrier_unlock(barrier_t *barrier) {
+	unlock_or_exit(&barrier->cond_mutex);
 }
 
 int barrier_wait(barrier_t *barrier) {
