@@ -21,3 +21,7 @@
 *heatSim
 *client_server_1
 *.diff
+
+# System files
+*.DS_Store
+*Thumbs.db
