@@ -109,9 +109,6 @@ DoubleMatrix2D *simul(
 						"Não será salva-guardado esta vez.\n"
 					);
 				}
-
-				/* Reiniciar contador */
-				signals_reset_alarm();
 			}
 
 			/* Efectuar troca de ponteiros */
@@ -119,6 +116,13 @@ DoubleMatrix2D *simul(
 			matrix = matrix_aux;
 			matrix_aux = matrix_temp;
 		}
+
+		if (signals_was_alarmed()) {
+			if (barrier_wait(&barrier)) { // Esperar pela tarefa que tratou de criar o processo-filho
+				signals_reset_alarm();
+			}
+		}
+
 		barrier_unlock(&barrier);
 	}
 
