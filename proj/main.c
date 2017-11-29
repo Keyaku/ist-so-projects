@@ -40,6 +40,10 @@ char *fichS_temp;  /* Nome do ficheiro de salvaguarda temporário */
 ---------------------------------------------------------------------*/
 /* Slightly safer approach to writing matrix to a file: writes to temporary first. */
 void safe_write_matrix() {
+	if (fichS == NULL || fichS_temp == NULL) {
+		return; // Nothing to do here
+	}
+
 	/* Saving to temporary file */
 	writeMatrix2dToFile(fichS_temp, matrix);
 
@@ -312,9 +316,6 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	/* Bloqueamos o conjunto de sinais */
-	signals_block();
-
 	/* Inicializamos o nosso material multithreading */
 	if (barrier_init(&barrier, trab)) {
 		return EXIT_FAILURE;
@@ -362,6 +363,9 @@ int main(int argc, char *argv[]) {
 	if (is_arg_null(slave_args, "Erro ao alocar memória para escravos.")) {
 		return EXIT_FAILURE;
 	}
+
+	/* Bloqueamos o conjunto de sinais */
+	signals_block();
 
 	/* Começamos por inicializar as tarefas uma a uma */
 	int idx = 0;
