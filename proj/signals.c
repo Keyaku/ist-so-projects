@@ -9,6 +9,13 @@
 /*--------------------------------------------------------------------
 | Private functions
 ---------------------------------------------------------------------*/
+// Operting System-specific macros
+#ifdef __APPLE__
+	#define checkerr(cb, msg) cb
+#else
+	#define checkerr(cb, msg) if (cb) { fprintf(stderr, msg); exit(EXIT_FAILURE); }
+#endif
+
 // SIGINT items
 int interrupted;
 // SIGALRM items
@@ -44,17 +51,11 @@ void manage_signal(int signum) {
 | Public functions
 ---------------------------------------------------------------------*/
 void signals_block() {
-	if (sigemptyset(&set)) {
-		fprintf(stderr, "Não foi possível esvaziar o conjunto de sinais\n");
-		exit(EXIT_FAILURE);
-	}
+	checkerr(sigemptyset(&set), "Não foi possível esvaziar o conjunto de sinais\n");
 
 	for (size_t idx = 0; idx < array_len(my_signals); idx++) {
 		int signum = my_signals[idx];
-		if (sigaddset(&set, signum)) {
-			fprintf(stderr, "Não foi possível adicionar um sinal ao conjunto de sinais\n");
-			exit(EXIT_FAILURE);
-		}
+		checkerr(sigaddset(&set, signum), "Não foi possível adicionar um sinal ao conjunto de sinais\n");
 	}
 
 	if (pthread_sigmask(SIG_BLOCK, &set, NULL)) {
@@ -69,10 +70,7 @@ void signals_unblock() {
 		exit(EXIT_FAILURE);
 	}
 
-	if (sigemptyset(&set)) {
-		fprintf(stderr, "Não foi possível esvaziar o conjunto de sinais\n");
-		exit(EXIT_FAILURE);
-	}
+	checkerr(sigemptyset(&set), "Não foi possível esvaziar o conjunto de sinais\n");
 }
 
 void signals_init(int interval) {
