@@ -34,6 +34,7 @@ DoubleMatrix2D *matrix, *matrix_aux; /* As nossas duas matrizes */
 
 const char *fichS; /* Nome do ficheiro de salvaguarda */
 char *fichS_temp;  /* Nome do ficheiro de salvaguarda temporário */
+pid_t save_child = -1;
 
 /*--------------------------------------------------------------------
 | Helper functions
@@ -96,10 +97,10 @@ DoubleMatrix2D *simul(
 			/* Verificar a próxima salvaguarda */
 			if (signals_was_alarmed()) {
 				/* Esperar pelo filho anterior antes de continuar */
-				wait_properly(-1, WNOHANG); // FIXME: use previously-saved childpid
+				wait_properly(save_child, WNOHANG);
 
 				/* Lançar novo processo salvaguarda */
-				pid_t save_child = fork();
+				save_child = fork();
 				if (save_child == 0) {
 					safe_write_matrix();
 					exit(EXIT_SUCCESS);
@@ -339,6 +340,7 @@ int main(int argc, char *argv[]) {
 		} else {
 			matrix = readMatrix2dFromFile(matrix_file, N+2, N+2);
 		}
+		save_child = -1;
 	}
 
 	/* Preenchendo a nossa matriz de acordo com os argumentos */
