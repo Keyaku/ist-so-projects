@@ -100,19 +100,21 @@ DoubleMatrix2D *simul(
 
 			/* Verificar a próxima salvaguarda */
 			if (signals_was_alarmed()) {
-				/* Esperar pelo filho anterior antes de continuar */
-				wait_properly(save_child, WNOHANG);
+				/* Esperar pelo filho anterior antes de continuar;
+				** se não tiver terimnado, continuar até à próxima vez */
+				if (wait_properly(save_child, WNOHANG) > 0) {
+					/* Lançar novo processo salvaguarda */
+					save_child = fork();
 
-				/* Lançar novo processo salvaguarda */
-				save_child = fork();
-				if (save_child == 0) {
-					safe_write_matrix();
-					exit(EXIT_SUCCESS);
-				} else if (save_child == -1) {
-					fprintf(stderr,
-						"Não foi possível criar processo filho.\n"
-						"Não será salva-guardado esta vez.\n"
-					);
+					if (save_child == 0) {
+						safe_write_matrix();
+						exit(EXIT_SUCCESS);
+					} else if (save_child == -1) {
+						fprintf(stderr,
+							"Não foi possível criar processo filho.\n"
+							"Não será salva-guardado esta vez.\n"
+						);
+					}
 				}
 
 				signals_reset_alarm();

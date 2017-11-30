@@ -10,6 +10,6 @@
 
 // PROTOTYPES
 double average(double *array, size_t size);
-void wait_properly(pid_t pid, int flags);
+int wait_properly(pid_t pid, int flags);
 
 #endif // HELPERS_H
