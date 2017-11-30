@@ -280,7 +280,7 @@ int main(int argc, char *argv[]) {
 
 			/* Composing temporary filename */
 			strcpy(fichS_temp, fichS);
-			fichS_temp[len] = '~'; fichS_temp[len+1] = 0;
+			strcat(fichS_temp, "~");
 		}
 	}
 
