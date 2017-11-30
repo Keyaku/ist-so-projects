@@ -34,7 +34,9 @@ DoubleMatrix2D *matrix, *matrix_aux; /* As nossas duas matrizes */
 
 const char *fichS; /* Nome do ficheiro de salvaguarda */
 char *fichS_temp;  /* Nome do ficheiro de salvaguarda temporário */
+
 pid_t save_child = -1;
+int interrupt;
 
 /*--------------------------------------------------------------------
 | Helper functions
@@ -67,7 +69,7 @@ DoubleMatrix2D *simul(
 	DoubleMatrix2D *result = matrix;
 	DoubleMatrix2D *matrix_temp = NULL;
 
-	while (it-- > 0 && !signals_was_interrupted()) {
+	while (it-- > 0 && !interrupt) {
 		/* Processamos uma iteração */
 		for (int i = first+1; i < linhas-1; i++) {
 			for (int j = 1; j < colunas-1; j++) {
@@ -92,8 +94,10 @@ DoubleMatrix2D *simul(
 			break;
 		}
 
-		/* Monta a barreira para poder trocar os ponteiros das matrizes */
+		/* Monta a barreira para trocar ponteiros das matrizes, e verificar por variáveis de sinais */
 		if (barrier_wait(&barrier)) {
+			interrupt = signals_was_interrupted();
+
 			/* Verificar a próxima salvaguarda */
 			if (signals_was_alarmed()) {
 				/* Esperar pelo filho anterior antes de continuar */
@@ -110,18 +114,14 @@ DoubleMatrix2D *simul(
 						"Não será salva-guardado esta vez.\n"
 					);
 				}
+
+				signals_reset_alarm();
 			}
 
 			/* Efectuar troca de ponteiros */
 			matrix_temp = matrix;
 			matrix = matrix_aux;
 			matrix_aux = matrix_temp;
-		}
-
-		if (signals_was_alarmed()) {
-			if (barrier_wait(&barrier)) { // Esperar pela tarefa que tratou de criar o processo-filho
-				signals_reset_alarm();
-			}
 		}
 
 		barrier_unlock(&barrier);
