@@ -42,7 +42,7 @@ int interrupt;
 | Helper functions
 ---------------------------------------------------------------------*/
 /* Slightly safer approach to writing matrix to a file: writes to temporary first. */
-void safe_write_matrix() {
+void safe_write_matrix(void) {
 	if (fichS == NULL || fichS_temp == NULL) {
 		return; // Nothing to do here
 	}
