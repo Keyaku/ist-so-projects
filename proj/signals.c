@@ -50,7 +50,7 @@ void manage_signal(int signum) {
 /*--------------------------------------------------------------------
 | Public functions
 ---------------------------------------------------------------------*/
-void signals_block() {
+void signals_block(void) {
 	checkerr(sigemptyset(&set), "Não foi possível esvaziar o conjunto de sinais\n");
 
 	for (size_t idx = 0; idx < array_len(my_signals); idx++) {
@@ -64,7 +64,7 @@ void signals_block() {
 	}
 }
 
-void signals_unblock() {
+void signals_unblock(void) {
 	if (pthread_sigmask(SIG_UNBLOCK, &set, NULL)) {
 		fprintf(stderr, "Não foi possível desbloquear os sinais\n");
 		exit(EXIT_FAILURE);
@@ -98,15 +98,15 @@ void signals_init(int interval) {
 	}
 }
 
-int signals_was_interrupted() {
+int signals_was_interrupted(void) {
 	return interrupted;
 }
 
-int signals_was_alarmed() {
+int signals_was_alarmed(void) {
 	return alarmed;
 }
 
-void signals_reset_alarm() {
+void signals_reset_alarm(void) {
 	alarmed = 0;
 	alarm(alarm_interval);
 }
