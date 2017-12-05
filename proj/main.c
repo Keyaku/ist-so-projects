@@ -35,7 +35,7 @@ DoubleMatrix2D *matrix, *matrix_aux; /* As nossas duas matrizes */
 const char *fichS; /* Nome do ficheiro de salvaguarda */
 char *fichS_temp;  /* Nome do ficheiro de salvaguarda temporário */
 
-pid_t save_child = -1;
+pid_t save_child;
 int interrupt;
 
 /*--------------------------------------------------------------------
