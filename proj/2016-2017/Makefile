@@ -4,13 +4,13 @@ DEPS = $(OBJDIR)/*.d
 
 INCLUDE += -I$(SRCDIR)
 
-CC = gcc
+CC ?= gcc
 LD = $(CC)
 CFLAGS = -O0 -g -c -pedantic -Wall $(INCLUDE)
 LDFLAGS = -pthread
 
-ZIPFILE = ex1-g48.zip
-EXECFILE ?= client_server_1
+ZIPFILE = exo.zip
+EXECFILE ?= i-banco
 
 ################################################################################
 #############       DO NOT CHANGE ANYTHING BELOW THIS PART        ##############
@@ -39,6 +39,11 @@ $(EXEC): $(OBJ)
 ################################################################################
 #############       DO NOT CHANGE ANYTHING ABOVE THIS PART        ##############
 ################################################################################
+debug: CFLAGS += -ansi -Wextra -Werror
+debug: all
+
+speed: CFLAGS += -DSPEEDTEST
+speed: all
 
 zip:
 	zip -v $(ZIPFILE) $(SRCDIR)/*.[ch] Makefile
